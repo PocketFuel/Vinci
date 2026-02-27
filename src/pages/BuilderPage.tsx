@@ -269,113 +269,129 @@ export function BuilderPage() {
         <h2>Builder Workspace</h2>
         <p className="muted">Pysometric-inspired compiler with CAD depth, distinct scene compositions, and outside-rail callouts.</p>
 
-        <label className="sh-field">
-          <span className="sh-label">Preset</span>
-          <select className="sh-input" value={selectedPresetId} onChange={onPresetChange}>
-            {presetManifest.map((preset) => (
-              <option key={preset.presetId} value={preset.presetId}>
-                {preset.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="sh-section">
+          <h3 className="sh-section-title">Scene Setup</h3>
+          <div className="sh-section-grid">
+            <label className="sh-field">
+              <span className="sh-label">Preset</span>
+              <select className="sh-input" value={selectedPresetId} onChange={onPresetChange}>
+                {presetManifest.map((preset) => (
+                  <option key={preset.presetId} value={preset.presetId}>
+                    {preset.title}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <label className="sh-field">
-          <span className="sh-label">Camera</span>
-          <select className="sh-input" value={scene.camera.presetId} onChange={onCameraChange}>
-            {(Object.keys(cameraPresets) as CameraPresetId[]).map((cameraId) => (
-              <option key={cameraId} value={cameraId}>
-                {cameraId}
-              </option>
-            ))}
-          </select>
-        </label>
+            <label className="sh-field">
+              <span className="sh-label">Camera</span>
+              <select className="sh-input" value={scene.camera.presetId} onChange={onCameraChange}>
+                {(Object.keys(cameraPresets) as CameraPresetId[]).map((cameraId) => (
+                  <option key={cameraId} value={cameraId}>
+                    {cameraId}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <label className="sh-field">
-          <span className="sh-label">Callout Layout</span>
-          <select className="sh-input" value={annotationLayoutMode} onChange={(e) => setAnnotationLayoutMode(e.target.value as "manual" | "auto-outside") }>
-            <option value="auto-outside">auto-outside</option>
-            <option value="manual">manual</option>
-          </select>
-        </label>
-
-        <label className="sh-field sh-inline">
-          <span className="inline-toggle">
-            <input type="checkbox" checked={scene.composition.fitMode === "auto"} onChange={toggleAutoFit} />
-            Auto-fit composition
-          </span>
-        </label>
-
-        <label className="sh-field sh-inline">
-          <span className="inline-toggle">
-            <input type="checkbox" checked={scene.rendering.showGridByDefault} onChange={toggleGrid} />
-            Show Isometric Grid
-          </span>
-        </label>
-
-        <label className="sh-field">
-          <span className="sh-label">Grid Opacity: {scene.rendering.gridOpacity.toFixed(2)}</span>
-          <input
-            className="sh-range"
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={scene.rendering.gridOpacity}
-            onChange={(event) => onRenderingChange("gridOpacity", Number(event.target.value))}
-          />
-        </label>
-
-        <label className="sh-field">
-          <span className="sh-label">Grid Pitch: {scene.rendering.gridPitch.toFixed(2)}</span>
-          <input
-            className="sh-range"
-            type="range"
-            min="0.3"
-            max="1.8"
-            step="0.01"
-            value={scene.rendering.gridPitch}
-            onChange={(event) => onRenderingChange("gridPitch", Number(event.target.value))}
-          />
-        </label>
-
-        <label className="sh-field">
-          <span className="sh-label">Line Width: {scene.tokens.lineWidth.toFixed(2)}</span>
-          <input
-            className="sh-range"
-            type="range"
-            min="0.8"
-            max="3.2"
-            step="0.05"
-            value={scene.tokens.lineWidth}
-            onChange={(event) => onTokenNumberChange("lineWidth", Number(event.target.value))}
-          />
-        </label>
-
-        <label className="sh-field">
-          <span className="sh-label">Face Hatch Density: {scene.tokens.hatchDensity.toFixed(2)}</span>
-          <input
-            className="sh-range"
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={scene.tokens.hatchDensity}
-            onChange={(event) => onTokenNumberChange("hatchDensity", Number(event.target.value))}
-          />
-        </label>
-
-        <div className="button-row">
-          <button className="sh-button" onClick={recomposeScene}>Recompose Scene</button>
-          <button className="sh-button" onClick={toggleAnnotations}>{scene.annotations.visible ? "Hide Annotations" : "Show Annotations"}</button>
-          <button className="sh-button" onClick={exportSvg}>Export SVG</button>
-          <button className="sh-button" onClick={exportJson}>Export JSON</button>
+            <label className="sh-field">
+              <span className="sh-label">Callout Layout</span>
+              <select
+                className="sh-input"
+                value={annotationLayoutMode}
+                onChange={(e) => setAnnotationLayoutMode(e.target.value as "manual" | "auto-outside")}
+              >
+                <option value="auto-outside">auto-outside</option>
+                <option value="manual">manual</option>
+              </select>
+            </label>
+          </div>
         </div>
 
-        <label className="sh-field import-control">
-          <span className="sh-label">Import Scene JSON</span>
-          <input className="sh-input sh-file" type="file" accept="application/json,.json" onChange={importJson} />
-        </label>
+        <div className="sh-section">
+          <h3 className="sh-section-title">Viewport</h3>
+          <label className="sh-check-row">
+            <input className="sh-checkbox" type="checkbox" checked={scene.composition.fitMode === "auto"} onChange={toggleAutoFit} />
+            <span>Auto-fit composition</span>
+          </label>
+
+          <label className="sh-check-row">
+            <input className="sh-checkbox" type="checkbox" checked={scene.rendering.showGridByDefault} onChange={toggleGrid} />
+            <span>Show isometric grid</span>
+          </label>
+        </div>
+
+        <div className="sh-section">
+          <h3 className="sh-section-title">Render Controls</h3>
+          <label className="sh-field">
+            <span className="sh-label">Grid Opacity: {scene.rendering.gridOpacity.toFixed(2)}</span>
+            <input
+              className="sh-range"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={scene.rendering.gridOpacity}
+              onChange={(event) => onRenderingChange("gridOpacity", Number(event.target.value))}
+            />
+          </label>
+
+          <label className="sh-field">
+            <span className="sh-label">Grid Pitch: {scene.rendering.gridPitch.toFixed(2)}</span>
+            <input
+              className="sh-range"
+              type="range"
+              min="0.3"
+              max="1.8"
+              step="0.01"
+              value={scene.rendering.gridPitch}
+              onChange={(event) => onRenderingChange("gridPitch", Number(event.target.value))}
+            />
+          </label>
+
+          <label className="sh-field">
+            <span className="sh-label">Line Width: {scene.tokens.lineWidth.toFixed(2)}</span>
+            <input
+              className="sh-range"
+              type="range"
+              min="0.8"
+              max="3.2"
+              step="0.05"
+              value={scene.tokens.lineWidth}
+              onChange={(event) => onTokenNumberChange("lineWidth", Number(event.target.value))}
+            />
+          </label>
+
+          <label className="sh-field">
+            <span className="sh-label">Face Hatch Density: {scene.tokens.hatchDensity.toFixed(2)}</span>
+            <input
+              className="sh-range"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={scene.tokens.hatchDensity}
+              onChange={(event) => onTokenNumberChange("hatchDensity", Number(event.target.value))}
+            />
+          </label>
+        </div>
+
+        <div className="sh-section">
+          <h3 className="sh-section-title">Export + Utility</h3>
+          <div className="button-row">
+            <button className="sh-button" onClick={recomposeScene}>Recompose Scene</button>
+            <button className="sh-button" onClick={toggleAnnotations}>{scene.annotations.visible ? "Hide Annotations" : "Show Annotations"}</button>
+            <button className="sh-button" onClick={exportSvg}>Export SVG</button>
+            <button className="sh-button" onClick={exportJson}>Export JSON</button>
+          </div>
+        </div>
+
+        <div className="sh-section">
+          <label className="sh-field import-control">
+            <span className="sh-label">Import Scene JSON</span>
+            <input className="sh-input sh-file" type="file" accept="application/json,.json" onChange={importJson} />
+          </label>
+        </div>
 
         <div className="status-row" role="status" aria-live="polite">
           {status}

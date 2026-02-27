@@ -139,12 +139,31 @@ function renderBond(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: str
   ]);
 
   const projected = points.map((point) => projectNodePoint(node, point, ctx));
-  const d = projected.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  const depth = projectedDepthOffset(node, ctx, { x: 0, y: 0, z: -0.1 });
+  const back = offsetPoints(projected, depth.x, depth.y);
+  const frontPath = linePath(projected, false);
+  const backPath = linePath(back, false);
+  const firstFront = projected[0];
+  const firstBack = back[0] ?? firstFront;
+  const lastFront = projected[projected.length - 1];
+  const lastBack = back[back.length - 1] ?? lastFront;
 
-  return `<path ${attrs} d="${d}" fill="none" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
+  return `<g ${attrs}>
+    <path d="${backPath}" fill="none" stroke="${normalizeHex(tokens.fillLeft)}" stroke-width="${Math.max(
+    1.8,
+    tokens.lineWidth + 0.95
+  )}" stroke-linecap="round"/>
+    <line x1="${firstBack?.x}" y1="${firstBack?.y}" x2="${firstFront?.x}" y2="${firstFront?.y}" stroke="${normalizeHex(
+    tokens.inkSecondary
+  )}" stroke-width="${Math.max(0.7, tokens.lineWidth - 0.45)}"/>
+    <line x1="${lastBack?.x}" y1="${lastBack?.y}" x2="${lastFront?.x}" y2="${
+    lastFront?.y
+  }" stroke="${normalizeHex(tokens.inkSecondary)}" stroke-width="${Math.max(0.7, tokens.lineWidth - 0.45)}"/>
+    <path d="${frontPath}" fill="none" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
     1.2,
     tokens.lineWidth + 0.35
-  )}" stroke-linecap="round"/>`;
+  )}" stroke-linecap="round"/>
+  </g>`;
 }
 
 function renderBox(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: string): string {
@@ -364,11 +383,91 @@ function renderArrow(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: st
     { x: 0.4, y: 0, z: 0 },
   ]);
   const projected = points.map((point) => projectNodePoint(node, point, ctx));
-  const d = projected.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  return `<path ${attrs} d="${d}" fill="none" stroke="${normalizeHex(tokens.inkSecondary)}" stroke-width="${Math.max(
-    1.4,
-    tokens.lineWidth
-  )}" marker-end="url(#arrow-head)"/>`;
+  if (projected.length < 2) {
+    return "";
+  }
+
+  const depth = projectedDepthOffset(node, ctx, { x: 0, y: 0.03, z: -0.14 });
+  const back = offsetPoints(projected, depth.x, depth.y);
+  const frontPath = smoothLinePath(projected);
+  const backPath = smoothLinePath(back);
+
+  const frontStart = projected[0];
+  const frontEnd = projected[projected.length - 1];
+  const frontPrev = projected[Math.max(0, projected.length - 2)];
+  const backStart = back[0];
+  const backEnd = back[back.length - 1];
+  const backPrev = back[Math.max(0, back.length - 2)];
+
+  const frontDirection = normalizeDirection2D(frontEnd, frontPrev);
+  const backDirection = normalizeDirection2D(backEnd, backPrev);
+  const frontNormal = { x: -frontDirection.y, y: frontDirection.x };
+  const backNormal = { x: -backDirection.y, y: backDirection.x };
+
+  const shaftWidth = Math.max(1.8, tokens.lineWidth + 0.5);
+  const headLength = Math.max(11, shaftWidth * 4.1);
+  const headWidth = Math.max(8.5, shaftWidth * 3.2);
+
+  const frontHeadBase = {
+    x: frontEnd.x - frontDirection.x * headLength,
+    y: frontEnd.y - frontDirection.y * headLength,
+  };
+  const backHeadBase = {
+    x: backEnd.x - backDirection.x * headLength,
+    y: backEnd.y - backDirection.y * headLength,
+  };
+
+  const frontHeadLeft = {
+    x: frontHeadBase.x + frontNormal.x * headWidth * 0.5,
+    y: frontHeadBase.y + frontNormal.y * headWidth * 0.5,
+  };
+  const frontHeadRight = {
+    x: frontHeadBase.x - frontNormal.x * headWidth * 0.5,
+    y: frontHeadBase.y - frontNormal.y * headWidth * 0.5,
+  };
+  const backHeadLeft = {
+    x: backHeadBase.x + backNormal.x * headWidth * 0.5,
+    y: backHeadBase.y + backNormal.y * headWidth * 0.5,
+  };
+  const backHeadRight = {
+    x: backHeadBase.x - backNormal.x * headWidth * 0.5,
+    y: backHeadBase.y - backNormal.y * headWidth * 0.5,
+  };
+
+  return `<g ${attrs}>
+    <path d="${backPath}" fill="none" stroke="${normalizeHex(tokens.fillRight)}" stroke-width="${(shaftWidth * 1.65).toFixed(
+      2
+    )}" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${backPath}" fill="none" stroke="${normalizeHex(tokens.inkSecondary)}" stroke-width="${Math.max(
+      0.75,
+      tokens.lineWidth - 0.5
+    )}" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="${pointsText([backHeadLeft, backEnd, backHeadRight])}" fill="${normalizeHex(
+      tokens.fillRight
+    )}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(0.65, tokens.lineWidth - 0.55)}"/>
+    <line x1="${backStart.x}" y1="${backStart.y}" x2="${frontStart.x}" y2="${frontStart.y}" stroke="${normalizeHex(
+      tokens.inkSecondary
+    )}" stroke-width="${Math.max(0.6, tokens.lineWidth - 0.55)}"/>
+    <line x1="${backHeadBase.x}" y1="${backHeadBase.y}" x2="${frontHeadBase.x}" y2="${frontHeadBase.y}" stroke="${normalizeHex(
+      tokens.inkSecondary
+    )}" stroke-width="${Math.max(0.6, tokens.lineWidth - 0.55)}"/>
+    <polygon points="${pointsText([frontHeadLeft, frontEnd, backEnd, backHeadLeft])}" fill="${normalizeHex(
+      tokens.fillLeft
+    )}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(0.55, tokens.lineWidth - 0.65)}"/>
+    <polygon points="${pointsText([frontHeadRight, frontEnd, backEnd, backHeadRight])}" fill="${normalizeHex(
+      tokens.fillRight
+    )}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(0.55, tokens.lineWidth - 0.65)}"/>
+    <path d="${frontPath}" fill="none" stroke="${normalizeHex(tokens.fillLeft)}" stroke-width="${(shaftWidth * 1.65).toFixed(
+      2
+    )}" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${frontPath}" fill="none" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
+      1.1,
+      tokens.lineWidth + 0.15
+    )}" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="${pointsText([frontHeadLeft, frontEnd, frontHeadRight])}" fill="${normalizeHex(
+      tokens.fillTop
+    )}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(0.7, tokens.lineWidth - 0.45)}"/>
+  </g>`;
 }
 
 function renderTube(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: string): string {
@@ -378,15 +477,39 @@ function renderTube(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: str
   ]);
   const projected = points.map((point) => projectNodePoint(node, point, ctx));
   const width = Math.max(1.1, asNumber(node.params.radius, 0.08) * WORLD_UNIT_PX * ctx.camera.scale);
-  const smooth = smoothLinePath(projected);
+  const depth = projectedDepthOffset(node, ctx, { x: 0, y: 0.04, z: -0.1 });
+  const back = offsetPoints(projected, depth.x, depth.y);
+  const frontPath = smoothLinePath(projected);
+  const backPath = smoothLinePath(back);
+  const start = projected[0];
+  const end = projected[projected.length - 1];
+  const backStart = back[0];
+  const backEnd = back[back.length - 1];
 
   return `<g ${attrs}>
-    <path d="${smooth}" fill="none" stroke="${normalizeHex(tokens.fillLeft)}" stroke-opacity="0.8" stroke-width="${(width * 1.8).toFixed(
+    <path d="${backPath}" fill="none" stroke="${normalizeHex(tokens.fillRight)}" stroke-width="${(width * 2.1).toFixed(
     2
   )}" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="${smooth}" fill="none" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${width.toFixed(
+    <path d="${backPath}" fill="none" stroke="${normalizeHex(tokens.inkSecondary)}" stroke-width="${Math.max(
+      0.8,
+      width * 0.78
+    ).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="${backStart.x}" y1="${backStart.y}" x2="${start.x}" y2="${start.y}" stroke="${normalizeHex(
+      tokens.inkSecondary
+    )}" stroke-width="${Math.max(0.7, width * 0.6).toFixed(2)}"/>
+    <line x1="${backEnd.x}" y1="${backEnd.y}" x2="${end.x}" y2="${end.y}" stroke="${normalizeHex(
+      tokens.inkSecondary
+    )}" stroke-width="${Math.max(0.7, width * 0.6).toFixed(2)}"/>
+    <path d="${frontPath}" fill="none" stroke="${normalizeHex(tokens.fillLeft)}" stroke-width="${(width * 2.1).toFixed(
     2
   )}" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${frontPath}" fill="none" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${width.toFixed(
+    2
+  )}" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${frontPath}" fill="none" stroke="${normalizeHex(tokens.bgPaper)}" stroke-opacity="0.56" stroke-width="${Math.max(
+      0.45,
+      width * 0.34
+    ).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round"/>
   </g>`;
 }
 
@@ -405,13 +528,36 @@ function renderLeaf(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: str
   const rightBottom = projectNodePoint(node, { x: width * (0.74 + curl * 0.24), y: height * 0.42, z: 0 }, ctx);
   const midTop = projectNodePoint(node, { x: width * 0.09, y: -height * 0.58, z: 0 }, ctx);
   const midBottom = projectNodePoint(node, { x: width * 0.02, y: height * 0.24, z: 0 }, ctx);
+  const depth = projectedDepthOffset(node, ctx, { x: 0.02, y: 0.06, z: -0.12 });
+
+  const bTip = offsetPoint(tip, depth.x, depth.y);
+  const bBase = offsetPoint(base, depth.x, depth.y);
+  const bLeftTop = offsetPoint(leftTop, depth.x, depth.y);
+  const bLeftBottom = offsetPoint(leftBottom, depth.x, depth.y);
+  const bRightTop = offsetPoint(rightTop, depth.x, depth.y);
+  const bRightBottom = offsetPoint(rightBottom, depth.x, depth.y);
+  const bMidTop = offsetPoint(midTop, depth.x, depth.y);
+  const bMidBottom = offsetPoint(midBottom, depth.x, depth.y);
 
   const body = `M ${base.x} ${base.y}
     C ${rightBottom.x} ${rightBottom.y}, ${rightTop.x} ${rightTop.y}, ${tip.x} ${tip.y}
     C ${midTop.x} ${midTop.y}, ${leftTop.x} ${leftTop.y}, ${leftBottom.x} ${leftBottom.y}
     C ${leftBottom.x} ${leftBottom.y}, ${midBottom.x} ${midBottom.y}, ${base.x} ${base.y} Z`;
+  const bodyBack = `M ${bBase.x} ${bBase.y}
+    C ${bRightBottom.x} ${bRightBottom.y}, ${bRightTop.x} ${bRightTop.y}, ${bTip.x} ${bTip.y}
+    C ${bMidTop.x} ${bMidTop.y}, ${bLeftTop.x} ${bLeftTop.y}, ${bLeftBottom.x} ${bLeftBottom.y}
+    C ${bLeftBottom.x} ${bLeftBottom.y}, ${bMidBottom.x} ${bMidBottom.y}, ${bBase.x} ${bBase.y} Z`;
 
   const veinPath = `M ${base.x} ${base.y} C ${midBottom.x} ${midBottom.y}, ${midTop.x} ${midTop.y}, ${tip.x} ${tip.y}`;
+  const veinBack = `M ${bBase.x} ${bBase.y} C ${bMidBottom.x} ${bMidBottom.y}, ${bMidTop.x} ${bMidTop.y}, ${bTip.x} ${bTip.y}`;
+  const rightSkin = `M ${base.x} ${base.y}
+    C ${rightBottom.x} ${rightBottom.y}, ${rightTop.x} ${rightTop.y}, ${tip.x} ${tip.y}
+    L ${bTip.x} ${bTip.y}
+    C ${bRightTop.x} ${bRightTop.y}, ${bRightBottom.x} ${bRightBottom.y}, ${bBase.x} ${bBase.y} Z`;
+  const leftSkin = `M ${tip.x} ${tip.y}
+    C ${midTop.x} ${midTop.y}, ${leftTop.x} ${leftTop.y}, ${leftBottom.x} ${leftBottom.y}
+    L ${bLeftBottom.x} ${bLeftBottom.y}
+    C ${bLeftTop.x} ${bLeftTop.y}, ${bMidTop.x} ${bMidTop.y}, ${bTip.x} ${bTip.y} Z`;
   const sideVeins: string[] = [];
   const contourStrokes: string[] = [];
 
@@ -444,7 +590,23 @@ function renderLeaf(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: str
   }
 
   return `<g ${attrs}>
+    <path d="${bodyBack}" fill="${normalizeHex(tokens.fillRight)}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
+      0.7,
+      tokens.lineWidth - 0.45
+    )}"/>
+    <path d="${rightSkin}" fill="${normalizeHex(tokens.fillLeft)}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
+      0.65,
+      tokens.lineWidth - 0.5
+    )}"/>
+    <path d="${leftSkin}" fill="${normalizeHex(tokens.fillRight)}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
+      0.65,
+      tokens.lineWidth - 0.5
+    )}" opacity="0.92"/>
     <path d="${body}" fill="${normalizeHex(tokens.fillTop)}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${tokens.lineWidth}"/>
+    <path d="${veinBack}" fill="none" stroke="${normalizeHex(tokens.inkSecondary)}" stroke-width="${Math.max(
+      0.65,
+      tokens.lineWidth - 0.45
+    )}" stroke-opacity="0.48"/>
     <path d="${veinPath}" fill="none" stroke="${normalizeHex(tokens.inkSecondary)}" stroke-width="${Math.max(0.8, tokens.lineWidth - 0.35)}"/>
     ${sideVeins.join("")}
     ${contourStrokes.join("")}
@@ -461,9 +623,27 @@ function renderPetal(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: st
   const rightOuter = projectNodePoint(node, { x: width * (0.9 + flare * 0.6), y: -height * 0.08, z: 0 }, ctx);
   const leftInner = projectNodePoint(node, { x: -width * 0.34, y: height * 0.5, z: 0 }, ctx);
   const rightInner = projectNodePoint(node, { x: width * 0.36, y: height * 0.48, z: 0 }, ctx);
+  const depth = projectedDepthOffset(node, ctx, { x: 0.02, y: 0.05, z: -0.1 });
+  const bTip = offsetPoint(tip, depth.x, depth.y);
+  const bBase = offsetPoint(base, depth.x, depth.y);
+  const bLeftOuter = offsetPoint(leftOuter, depth.x, depth.y);
+  const bRightOuter = offsetPoint(rightOuter, depth.x, depth.y);
+  const bLeftInner = offsetPoint(leftInner, depth.x, depth.y);
+  const bRightInner = offsetPoint(rightInner, depth.x, depth.y);
   const path = `M ${base.x} ${base.y}
     C ${rightInner.x} ${rightInner.y}, ${rightOuter.x} ${rightOuter.y}, ${tip.x} ${tip.y}
     C ${leftOuter.x} ${leftOuter.y}, ${leftInner.x} ${leftInner.y}, ${base.x} ${base.y} Z`;
+  const pathBack = `M ${bBase.x} ${bBase.y}
+    C ${bRightInner.x} ${bRightInner.y}, ${bRightOuter.x} ${bRightOuter.y}, ${bTip.x} ${bTip.y}
+    C ${bLeftOuter.x} ${bLeftOuter.y}, ${bLeftInner.x} ${bLeftInner.y}, ${bBase.x} ${bBase.y} Z`;
+  const rightSkin = `M ${base.x} ${base.y}
+    C ${rightInner.x} ${rightInner.y}, ${rightOuter.x} ${rightOuter.y}, ${tip.x} ${tip.y}
+    L ${bTip.x} ${bTip.y}
+    C ${bRightOuter.x} ${bRightOuter.y}, ${bRightInner.x} ${bRightInner.y}, ${bBase.x} ${bBase.y} Z`;
+  const leftSkin = `M ${tip.x} ${tip.y}
+    C ${leftOuter.x} ${leftOuter.y}, ${leftInner.x} ${leftInner.y}, ${base.x} ${base.y}
+    L ${bBase.x} ${bBase.y}
+    C ${bLeftInner.x} ${bLeftInner.y}, ${bLeftOuter.x} ${bLeftOuter.y}, ${bTip.x} ${bTip.y} Z`;
 
   const innerA = projectNodePoint(node, { x: 0, y: -height * 0.6, z: 0 }, ctx);
   const innerB = projectNodePoint(node, { x: 0.08 * width, y: height * 0.42, z: 0 }, ctx);
@@ -486,6 +666,18 @@ function renderPetal(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: st
   }
 
   return `<g ${attrs}>
+    <path d="${pathBack}" fill="${normalizeHex(tokens.fillRight)}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
+      0.7,
+      tokens.lineWidth - 0.45
+    )}"/>
+    <path d="${rightSkin}" fill="${normalizeHex(tokens.fillLeft)}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
+      0.65,
+      tokens.lineWidth - 0.5
+    )}"/>
+    <path d="${leftSkin}" fill="${normalizeHex(tokens.fillRight)}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
+      0.65,
+      tokens.lineWidth - 0.5
+    )}" opacity="0.92"/>
     <path d="${path}" fill="${normalizeHex(tokens.fillTop)}" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${tokens.lineWidth}"/>
     <path d="M ${innerB.x} ${innerB.y} C ${innerB.x} ${innerB.y - 18}, ${innerA.x} ${innerA.y + 18}, ${innerA.x} ${innerA.y}" fill="none" stroke="${normalizeHex(
     tokens.inkSecondary
@@ -513,6 +705,13 @@ function renderRoot(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: str
   const branch2 = asVectorArray(node.params.branch2, []);
   const width = Math.max(1, asNumber(node.params.width, tokens.lineWidth + 0.1));
   const rootMain = smoothLinePath(projected);
+  const depth = projectedDepthOffset(node, ctx, { x: 0.03, y: 0.05, z: -0.1 });
+  const backProjected = offsetPoints(projected, depth.x, depth.y);
+  const rootMainBack = smoothLinePath(backProjected);
+  const firstFront = projected[0];
+  const firstBack = backProjected[0] ?? firstFront;
+  const lastFront = projected[projected.length - 1];
+  const lastBack = backProjected[backProjected.length - 1] ?? lastFront;
   const hairlines: string[] = [];
 
   const renderBranch = (branch: Vector3[]) => {
@@ -520,10 +719,17 @@ function renderRoot(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: str
       return "";
     }
     const branchProjected = branch.map((point) => projectNodePoint(node, point, ctx));
-    return `<path d="${smoothLinePath(branchProjected)}" fill="none" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
+    const backBranch = offsetPoints(branchProjected, depth.x, depth.y);
+    return `<g>
+      <path d="${smoothLinePath(backBranch)}" fill="none" stroke="${normalizeHex(tokens.fillRight)}" stroke-width="${Math.max(
+      0.8,
+      width - 0.35
+    )}" stroke-linecap="round"/>
+      <path d="${smoothLinePath(branchProjected)}" fill="none" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${Math.max(
       0.75,
       width - 0.5
-    )}" stroke-linecap="round"/>`;
+    )}" stroke-linecap="round"/>
+    </g>`;
   };
 
   for (let i = 0; i < projected.length - 1; i += 1) {
@@ -554,6 +760,20 @@ function renderRoot(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: str
   }
 
   return `<g ${attrs}>
+    <path d="${rootMainBack}" fill="none" stroke="${normalizeHex(tokens.fillRight)}" stroke-width="${Math.max(
+      1.1,
+      width + 0.5
+    )}" stroke-linecap="round"/>
+    <line x1="${firstBack?.x}" y1="${firstBack?.y}" x2="${firstFront?.x}" y2="${firstFront?.y}" stroke="${normalizeHex(
+      tokens.inkSecondary
+    )}" stroke-width="${Math.max(0.6, width - 0.65)}"/>
+    <line x1="${lastBack?.x}" y1="${lastBack?.y}" x2="${lastFront?.x}" y2="${
+    lastFront?.y
+  }" stroke="${normalizeHex(tokens.inkSecondary)}" stroke-width="${Math.max(0.6, width - 0.65)}"/>
+    <path d="${rootMain}" fill="none" stroke="${normalizeHex(tokens.fillLeft)}" stroke-width="${Math.max(
+      1.0,
+      width + 0.32
+    )}" stroke-linecap="round"/>
     <path d="${rootMain}" fill="none" stroke="${normalizeHex(tokens.inkPrimary)}" stroke-width="${width}" stroke-linecap="round"/>
     <path d="${rootMain}" fill="none" stroke="${normalizeHex(tokens.inkSecondary)}" stroke-width="${Math.max(0.45, width - 0.8)}" stroke-opacity="0.7" stroke-linecap="round"/>
     ${renderBranch(branch1)}
@@ -671,6 +891,10 @@ function linePath(points: Array<{ x: number; y: number }>, closed: boolean): str
   return closed ? `${base} Z` : base;
 }
 
+function pointsText(points: Array<{ x: number; y: number }>): string {
+  return points.map((point) => `${point.x},${point.y}`).join(" ");
+}
+
 function smoothLinePath(points: Array<{ x: number; y: number }>): string {
   if (points.length === 0) {
     return "";
@@ -701,6 +925,37 @@ function smoothLinePath(points: Array<{ x: number; y: number }>): string {
   }
 
   return path;
+}
+
+function projectedDepthOffset(node: Node, ctx: RenderContext, localOffset: Vector3): { x: number; y: number } {
+  const base = projectNodePoint(node, { x: 0, y: 0, z: 0 }, ctx);
+  const offset = projectNodePoint(node, localOffset, ctx);
+  return {
+    x: offset.x - base.x,
+    y: offset.y - base.y,
+  };
+}
+
+function offsetPoint(point: { x: number; y: number }, dx: number, dy: number): { x: number; y: number } {
+  return { x: point.x + dx, y: point.y + dy };
+}
+
+function offsetPoints(
+  points: Array<{ x: number; y: number }>,
+  dx: number,
+  dy: number
+): Array<{ x: number; y: number }> {
+  return points.map((point) => offsetPoint(point, dx, dy));
+}
+
+function normalizeDirection2D(end: { x: number; y: number }, start: { x: number; y: number }): { x: number; y: number } {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.sqrt(dx * dx + dy * dy) || 1;
+  return {
+    x: dx / length,
+    y: dy / length,
+  };
 }
 
 function sampleCirclePoints(radius: number, y: number, phase = 0, segments = 24): Vector3[] {

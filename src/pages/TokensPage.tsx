@@ -31,6 +31,10 @@ export function TokensPage() {
     saveFile("vinci-token-set.json", JSON.stringify(tokens, null, 2), "application/json");
   }
 
+  function colorValue(value: string) {
+    return value.toUpperCase();
+  }
+
   return (
     <main className="page tokens-page">
       <section className="panel token-panel">
@@ -40,59 +44,83 @@ export function TokensPage() {
         </p>
 
         <div className="token-grid">
-          <label className="sh-field">
-            <span className="sh-label">Background Paper</span>
-            <input className="sh-input" type="color" value={tokens.bgPaper} onChange={(e) => updateColor("bgPaper", e.target.value)} />
-          </label>
-          <label className="sh-field">
-            <span className="sh-label">Ink Primary</span>
-            <input className="sh-input" type="color" value={tokens.inkPrimary} onChange={(e) => updateColor("inkPrimary", e.target.value)} />
-          </label>
-          <label className="sh-field">
-            <span className="sh-label">Ink Secondary</span>
-            <input
-              className="sh-input"
-              type="color"
-              value={tokens.inkSecondary}
-              onChange={(e) => updateColor("inkSecondary", e.target.value)}
-            />
-          </label>
-          <label className="sh-field">
-            <span className="sh-label">Fill Top</span>
-            <input className="sh-input" type="color" value={tokens.fillTop} onChange={(e) => updateColor("fillTop", e.target.value)} />
-          </label>
-          <label className="sh-field">
-            <span className="sh-label">Fill Left</span>
-            <input className="sh-input" type="color" value={tokens.fillLeft} onChange={(e) => updateColor("fillLeft", e.target.value)} />
-          </label>
-          <label className="sh-field">
-            <span className="sh-label">Fill Right</span>
-            <input className="sh-input" type="color" value={tokens.fillRight} onChange={(e) => updateColor("fillRight", e.target.value)} />
-          </label>
-          <label className="sh-field">
-            <span className="sh-label">Line Width ({tokens.lineWidth.toFixed(2)})</span>
-            <input
-              className="sh-range"
-              type="range"
-              min="0.8"
-              max="3.0"
-              step="0.05"
-              value={tokens.lineWidth}
-              onChange={(e) => updateNumber("lineWidth", Number(e.target.value))}
-            />
-          </label>
-          <label className="sh-field">
-            <span className="sh-label">Hatch Density ({tokens.hatchDensity.toFixed(2)})</span>
-            <input
-              className="sh-range"
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={tokens.hatchDensity}
-              onChange={(e) => updateNumber("hatchDensity", Number(e.target.value))}
-            />
-          </label>
+          <div className="sh-section">
+            <h3 className="sh-section-title">Paper + Ink</h3>
+            <label className="sh-field">
+              <span className="sh-label">Background Paper</span>
+              <div className="sh-color-row">
+                <input className="sh-color" type="color" value={tokens.bgPaper} onChange={(e) => updateColor("bgPaper", e.target.value)} />
+                <span className="sh-color-value">{colorValue(tokens.bgPaper)}</span>
+              </div>
+            </label>
+            <label className="sh-field">
+              <span className="sh-label">Ink Primary</span>
+              <div className="sh-color-row">
+                <input className="sh-color" type="color" value={tokens.inkPrimary} onChange={(e) => updateColor("inkPrimary", e.target.value)} />
+                <span className="sh-color-value">{colorValue(tokens.inkPrimary)}</span>
+              </div>
+            </label>
+            <label className="sh-field">
+              <span className="sh-label">Ink Secondary</span>
+              <div className="sh-color-row">
+                <input className="sh-color" type="color" value={tokens.inkSecondary} onChange={(e) => updateColor("inkSecondary", e.target.value)} />
+                <span className="sh-color-value">{colorValue(tokens.inkSecondary)}</span>
+              </div>
+            </label>
+          </div>
+
+          <div className="sh-section">
+            <h3 className="sh-section-title">Face Fill System</h3>
+            <label className="sh-field">
+              <span className="sh-label">Fill Top</span>
+              <div className="sh-color-row">
+                <input className="sh-color" type="color" value={tokens.fillTop} onChange={(e) => updateColor("fillTop", e.target.value)} />
+                <span className="sh-color-value">{colorValue(tokens.fillTop)}</span>
+              </div>
+            </label>
+            <label className="sh-field">
+              <span className="sh-label">Fill Left</span>
+              <div className="sh-color-row">
+                <input className="sh-color" type="color" value={tokens.fillLeft} onChange={(e) => updateColor("fillLeft", e.target.value)} />
+                <span className="sh-color-value">{colorValue(tokens.fillLeft)}</span>
+              </div>
+            </label>
+            <label className="sh-field">
+              <span className="sh-label">Fill Right</span>
+              <div className="sh-color-row">
+                <input className="sh-color" type="color" value={tokens.fillRight} onChange={(e) => updateColor("fillRight", e.target.value)} />
+                <span className="sh-color-value">{colorValue(tokens.fillRight)}</span>
+              </div>
+            </label>
+          </div>
+
+          <div className="sh-section">
+            <h3 className="sh-section-title">Line + Hatch</h3>
+            <label className="sh-field">
+              <span className="sh-label">Line Width ({tokens.lineWidth.toFixed(2)})</span>
+              <input
+                className="sh-range"
+                type="range"
+                min="0.8"
+                max="3.0"
+                step="0.05"
+                value={tokens.lineWidth}
+                onChange={(e) => updateNumber("lineWidth", Number(e.target.value))}
+              />
+            </label>
+            <label className="sh-field">
+              <span className="sh-label">Hatch Density ({tokens.hatchDensity.toFixed(2)})</span>
+              <input
+                className="sh-range"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={tokens.hatchDensity}
+                onChange={(e) => updateNumber("hatchDensity", Number(e.target.value))}
+              />
+            </label>
+          </div>
         </div>
 
         <button className="sh-button" onClick={exportTokenSet}>

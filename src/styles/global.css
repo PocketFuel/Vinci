@@ -177,26 +177,20 @@ p {
 .controls-panel {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
   overflow-y: auto;
   min-height: 0;
   max-height: 100%;
   overscroll-behavior: contain;
-  padding-right: 0.55rem;
+  padding-right: 0.6rem;
 }
 
 .controls-panel label,
 .token-grid label {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.9rem;
-}
-
-.inline-toggle {
-  display: inline-flex;
-  align-items: center;
   gap: 0.45rem;
+  font-size: 0.9rem;
 }
 
 .sh-field {
@@ -205,29 +199,105 @@ p {
   gap: 0.45rem;
 }
 
-.sh-inline {
-  padding: 0.6rem 0.75rem;
-  border-radius: 16px;
-  border: 1px solid #d7d6ce;
-  background: #f5f4ee;
+.sh-section {
+  border: 1px solid #d8d4c8;
+  border-radius: 18px;
+  background: #f7f5ef;
+  padding: 0.82rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.sh-section-title {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #2f4f3d;
+}
+
+.sh-section-grid {
+  display: grid;
+  gap: 0.64rem;
 }
 
 .sh-label {
-  color: #223c2f;
+  color: #234032;
   font-weight: 700;
-  font-size: 0.94rem;
+  font-size: 0.93rem;
+}
+
+.sh-check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.58rem;
+  min-height: 50px;
+  border-radius: 14px;
+  border: 1.5px solid #d5d7cf;
+  background: #f8f7f3;
+  padding: 0 0.82rem;
+  color: #335848;
+  font-weight: 600;
+}
+
+.sh-checkbox {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border-radius: 5px;
+  accent-color: #2d6f4e;
+}
+
+.sh-color-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 0.5rem;
+}
+
+.sh-color {
+  width: 64px;
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1.5px solid #ccd3ca;
+  background: #f7f6f2;
+  padding: 0.2rem;
+  cursor: pointer;
+}
+
+.sh-color-value {
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1.5px solid #d4d8cf;
+  background: #faf9f4;
+  color: #2f5a46;
+  padding: 0.62rem 0.74rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.02em;
+  font-size: 0.88rem;
 }
 
 .sh-input,
 .sh-field select {
   width: 100%;
-  min-height: 50px;
-  border-radius: 16px;
+  min-height: 52px;
+  border-radius: 14px;
   border: 1.5px solid #d4d7cf;
-  background: #f7f6f2;
-  color: #2f5a46;
-  padding: 0.65rem 0.85rem;
+  background: #f8f7f3;
+  color: #2d4f3f;
+  padding: 0.7rem 0.86rem;
   transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+select.sh-input {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #6d7f6e 50%), linear-gradient(135deg, #6d7f6e 50%, transparent 50%);
+  background-position: calc(100% - 20px) calc(50% - 3px), calc(100% - 14px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2.2rem;
 }
 
 .sh-input:focus,
@@ -239,15 +309,49 @@ p {
 }
 
 .sh-range {
+  width: 100%;
+  margin: 0;
+  accent-color: #2e6f4e;
+}
+
+.sh-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #d9ded3;
+}
+
+.sh-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  margin-top: -5px;
+  border-radius: 50%;
+  border: 1px solid #2f6d4d;
+  background: #f8fcf8;
+}
+
+.sh-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #d9ded3;
+}
+
+.sh-range::-moz-range-thumb {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 1px solid #2f6d4d;
+  background: #f8fcf8;
   accent-color: #2e6f4e;
 }
 
 .sh-button {
   min-height: 44px;
-  border: 1px solid #8ea794;
+  border: 1px solid #90aa95;
   border-radius: 12px;
   background: #edf4ee;
-  color: #244232;
+  color: #234031;
   font-weight: 600;
 }
 
@@ -256,7 +360,17 @@ p {
 }
 
 .sh-file {
-  padding: 0.45rem;
+  padding: 0.55rem;
+  border-style: dashed;
+}
+
+.sh-input[type="file"]::file-selector-button {
+  border: 1px solid #96ad9a;
+  background: #eaf1e9;
+  color: #264434;
+  border-radius: 10px;
+  padding: 0.34rem 0.58rem;
+  margin-right: 0.66rem;
 }
 
 select,
