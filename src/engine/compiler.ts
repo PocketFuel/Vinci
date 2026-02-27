@@ -1,0 +1,129 @@
+import { animationStyleBlock } from "./animations";
+import { renderAnnotations } from "./annotations";
+import { buildIsometricGridPaths, normalizeHex } from "./projection";
+import { renderNode } from "./primitives";
+import { autoFitCamera, getVisibleNodes, projectSceneBounds, sortNodesByDepth } from "./scene";
+import type { AnimationSpec, SceneDocument } from "./types";
+
+export type CompileOptions = {
+  width?: number;
+  height?: number;
+  includeAnnotations?: boolean;
+  showGrid?: boolean;
+  fitToFrame?: boolean;
+  annotationLayoutMode?: "manual" | "auto-outside";
+  gridPitchOverride?: number;
+};
+
+export function compileSceneToSvg(scene: SceneDocument, options: CompileOptions = {}): string {
+  const width = options.width ?? 1280;
+  const height = options.height ?? 800;
+
+  const includeAnnotations = options.includeAnnotations ?? scene.annotations.visible;
+  const showGrid = options.showGrid ?? scene.rendering.showGridByDefault;
+  const fitToFrame = options.fitToFrame ?? scene.composition.fitMode === "auto";
+  const annotationLayoutMode = options.annotationLayoutMode ?? "auto-outside";
+
+  const viewport = { width, height };
+  const visibleNodes = getVisibleNodes(scene);
+
+  const renderCamera = fitToFrame ? autoFitCamera(scene, visibleNodes, viewport, scene.camera) : scene.camera;
+  const sortedNodes = sortNodesByDepth(visibleNodes, renderCamera);
+  const mainBounds = projectSceneBounds(sortedNodes, renderCamera, viewport);
+
+  const animationsByNode = new Map<string, AnimationSpec[]>();
+  scene.animations.forEach((animation) => {
+    animation.targetNodeIds.forEach((target) => {
+      const list = animationsByNode.get(target) ?? [];
+      list.push(animation);
+      animationsByNode.set(target, list);
+    });
+  });
+
+  const nodeMarkup = sortedNodes
+    .map((node) =>
+      renderNode(node, scene.tokens, {
+        viewport,
+        camera: renderCamera,
+        animationsByNode,
+      })
+    )
+    .join("\n");
+
+  const grid = buildIsometricGridPaths(
+    viewport,
+    renderCamera,
+    options.gridPitchOverride ?? scene.rendering.gridPitch,
+    scene.rendering.gridOpacity
+  );
+
+  const gridMarkup = showGrid
+    ? `<g id="layer-grid" data-layer="grid">
+        <path d="${grid.xPath}" stroke="${normalizeHex(scene.tokens.inkSecondary)}" stroke-opacity="${(
+        grid.opacity * 0.5
+      ).toFixed(3)}" stroke-width="0.75" fill="none"/>
+        <path d="${grid.zPath}" stroke="${normalizeHex(scene.tokens.inkSecondary)}" stroke-opacity="${(
+        grid.opacity * 0.45
+      ).toFixed(3)}" stroke-width="0.75" fill="none"/>
+        <path d="${grid.yPath}" stroke="${normalizeHex(scene.tokens.inkSecondary)}" stroke-opacity="${(
+        grid.opacity * 0.3
+      ).toFixed(3)}" stroke-width="0.65" fill="none"/>
+      </g>`
+    : "";
+
+  const annotationMarkup = includeAnnotations
+    ? renderAnnotations({
+        annotations: scene.annotations,
+        nodes: sortedNodes,
+        camera: renderCamera,
+        tokens: scene.tokens,
+        viewport,
+        mainBounds,
+        layoutMode: annotationLayoutMode,
+      })
+    : "";
+
+  const topHatchOpacity = (0.06 + scene.tokens.hatchDensity * 0.28).toFixed(3);
+  const leftHatchOpacity = (0.08 + scene.tokens.hatchDensity * 0.3).toFixed(3);
+  const rightHatchOpacity = (0.07 + scene.tokens.hatchDensity * 0.26).toFixed(3);
+
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeXml(
+    scene.meta.title
+  )}">
+  <defs>
+    <pattern id="face-hatch-top" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(30)">
+      <line x1="0" y1="0" x2="0" y2="10" stroke="${normalizeHex(scene.tokens.inkSecondary)}" stroke-opacity="${topHatchOpacity}" stroke-width="0.8"/>
+    </pattern>
+    <pattern id="face-hatch-left" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(65)">
+      <line x1="0" y1="0" x2="0" y2="8" stroke="${normalizeHex(scene.tokens.inkSecondary)}" stroke-opacity="${leftHatchOpacity}" stroke-width="0.85"/>
+    </pattern>
+    <pattern id="face-hatch-right" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(-25)">
+      <line x1="0" y1="0" x2="0" y2="8" stroke="${normalizeHex(scene.tokens.inkSecondary)}" stroke-opacity="${rightHatchOpacity}" stroke-width="0.8"/>
+    </pattern>
+    <marker id="arrow-head" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto-start-reverse">
+      <path d="M0,0 L12,6 L0,12 z" fill="${normalizeHex(scene.tokens.inkSecondary)}"/>
+    </marker>
+  </defs>
+  <style>
+    .scene-bg { fill: ${normalizeHex(scene.tokens.bgPaper)}; }
+    ${animationStyleBlock()}
+  </style>
+  <rect class="scene-bg" width="100%" height="100%"></rect>
+  ${gridMarkup}
+  <g id="layer-main" data-layer="main">
+    ${nodeMarkup}
+  </g>
+  ${annotationMarkup}
+</svg>
+`.trim();
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}

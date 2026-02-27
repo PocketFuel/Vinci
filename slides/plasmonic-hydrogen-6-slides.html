@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plasmonic Hydrogen Power Generator - 6 Slide Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream-050: #f2efe8;
+      --cream-100: #e7e2d8;
+      --green-700: #1e5a2a;
+      --green-600: #2f6f38;
+      --green-200: #c7d8be;
+      --slate-900: #20252b;
+      --slate-700: #3a4048;
+      --border: #cfc8ba;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 28px;
+      font-family: "DM Sans", sans-serif;
+      background: radial-gradient(circle at 15% 15%, #f7f4ed 0%, var(--cream-050) 40%, #ece7dc 100%);
+      color: var(--slate-900);
+    }
+
+    .deck {
+      display: grid;
+      gap: 28px;
+      justify-content: center;
+    }
+
+    .slide {
+      width: 1920px;
+      height: 1080px;
+      padding: 40px;
+      border-radius: 28px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,.2));
+      box-shadow: 0 10px 32px rgba(0, 0, 0, .08);
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 24px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .slide::after {
+      content: "";
+      position: absolute;
+      right: -140px;
+      bottom: -120px;
+      width: 780px;
+      height: 520px;
+      background: radial-gradient(circle at 30% 20%, rgba(199, 216, 190, .42) 0%, rgba(199, 216, 190, .14) 45%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .deck-label {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 12px 20px;
+      background: rgba(255,255,255,.65);
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      color: var(--green-700);
+    }
+
+    .slide-index {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--slate-700);
+    }
+
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 14px 24px;
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 500;
+      background: var(--cream-100);
+      color: var(--slate-900);
+    }
+
+    .tab.active {
+      background: var(--green-200);
+      border-color: #b8ccaf;
+      color: var(--green-700);
+      font-weight: 700;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1.18fr 0.82fr;
+      gap: 24px;
+      min-height: 0;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 30px;
+      background: rgba(255,255,255,.86);
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .panel h1,
+    .panel h2 {
+      margin: 0 0 18px;
+      font-family: "The Seasons", "Times New Roman", serif;
+      color: var(--green-700);
+      letter-spacing: 0.01em;
+    }
+
+    .panel h1 {
+      font-size: 82px;
+      line-height: .98;
+    }
+
+    .panel h2 {
+      font-size: 56px;
+      line-height: 1.05;
+    }
+
+    .subhead {
+      margin: 0 0 20px;
+      font-size: 42px;
+      font-weight: 600;
+      color: var(--slate-900);
+    }
+
+    .body,
+    .panel p,
+    li {
+      font-size: 34px;
+      line-height: 1.34;
+      margin: 0 0 16px;
+      color: var(--slate-900);
+    }
+
+    .panel ul {
+      margin: 0;
+      padding-left: 34px;
+    }
+
+    .cards {
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      background: var(--white);
+    }
+
+    .card-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px;
+      color: var(--green-700);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .card p,
+    .card li {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .metric h4 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--green-700);
+    }
+
+    .metric p {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.25;
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <section class="slide">
+      <div class="header">
+        <div class="deck-label">Plasmonic Hydrogen Power Generator</div>
+        <div class="slide-index">Slide 01 / 06</div>
+      </div>
+      <nav class="tabs">
+        <span class="tab active">01 Overview</span>
+        <span class="tab">02 How It Works</span>
+        <span class="tab">03 Advantages I</span>
+        <span class="tab">04 Advantages II</span>
+        <span class="tab">05 Why It Matters</span>
+        <span class="tab">06 Future Vision</span>
+      </nav>
+      <div class="content">
+        <article class="panel">
+          <h1>Plasmonic Hydrogen<br>Power Generator</h1>
+          <p class="subhead">The Next Leap in Clean Energy</p>
+          <p class="body">The OEM and Energy-Spout refined the terminology from “Hydrogen Magnetic” to Plasmonic Hydrogen Power Generator to reflect the plasmonic nanoscience that captures and amplifies light at the nanoscale to generate hydrogen and continuous clean power.</p>
+        </article>
+        <aside class="panel cards">
+          <div class="card">
+            <h3 class="card-title">Overview</h3>
+            <p>The system combines plasmonics with hydrogen production and power generation for efficiency, durability, and scalability in renewable conversion.</p>
+          </div>
+          <div class="card">
+            <p>Plasmonic nanostructures concentrate light energy and enhance catalytic reactions to split water into hydrogen and oxygen using sunlight or low-grade thermal energy.</p>
+          </div>
+          <div class="card">
+            <p>Paired with a high-efficiency fuel cell or direct hydrogen combustion module, it delivers continuous clean electricity with no dependence on fossil fuels.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="header">
+        <div class="deck-label">Plasmonic Hydrogen Power Generator</div>
+        <div class="slide-index">Slide 02 / 06</div>
+      </div>
+      <nav class="tabs">
+        <span class="tab">01 Overview</span>
+        <span class="tab active">02 How It Works</span>
+        <span class="tab">03 Advantages I</span>
+        <span class="tab">04 Advantages II</span>
+        <span class="tab">05 Why It Matters</span>
+        <span class="tab">06 Future Vision</span>
+      </nav>
+      <div class="content">
+        <article class="panel">
+          <h2>How It Works</h2>
+          <p>By integrating plasmonic nanophotonics with advanced hydrogen generation and fuel-cell systems, the platform converts light and thermal energy directly into electrical power.</p>
+          <p>Plasmonic nanoparticles, engineered metallic structures that amplify electromagnetic fields, enhance catalytic water-splitting reactions and enable direct solar-to-hydrogen conversion with minimal energy loss.</p>
+          <p>Traditional photovoltaic and electrolysis systems face energy losses, bandgap limitations, and catalyst degradation. The plasmonic-enhanced process is described as achieving higher photon-to-fuel conversion rates, lower activation energy, and long-term operational stability.</p>
+        </article>
+        <aside class="panel cards">
+          <div class="card">
+            <h3 class="card-title">Capture</h3>
+            <p>Light and low-grade thermal energy are concentrated by plasmonic nanostructures.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Convert</h3>
+            <p>Water molecules split into hydrogen and oxygen through enhanced catalytic reactions.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Deliver</h3>
+            <p>Hydrogen is stored for later use or used immediately to provide continuous day-and-night power.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="header">
+        <div class="deck-label">Plasmonic Hydrogen Power Generator</div>
+        <div class="slide-index">Slide 03 / 06</div>
+      </div>
+      <nav class="tabs">
+        <span class="tab">01 Overview</span>
+        <span class="tab">02 How It Works</span>
+        <span class="tab active">03 Advantages I</span>
+        <span class="tab">04 Advantages II</span>
+        <span class="tab">05 Why It Matters</span>
+        <span class="tab">06 Future Vision</span>
+      </nav>
+      <div class="content">
+        <article class="panel">
+          <h2>Key Advantages</h2>
+          <p class="subhead">Core performance and deployment benefits</p>
+          <ul>
+            <li>Unmatched Energy Efficiency: plasmonic materials convert light into chemical energy with higher efficiency than conventional photovoltaic or thermal systems.</li>
+            <li>Continuous, On-Demand Power: hydrogen storage supports uninterrupted operation.</li>
+            <li>True Zero-Emission Operation: the by-product is water vapor.</li>
+            <li>Extended Catalyst Longevity: plasmonic nanostructures resist oxidation and thermal degradation.</li>
+          </ul>
+        </article>
+        <aside class="panel cards">
+          <div class="card">
+            <h3 class="card-title">Deployment</h3>
+            <ul>
+              <li>Compact, modular architecture</li>
+              <li>Scalable from community units to megawatt-class installations</li>
+              <li>On-grid and off-grid suitability</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Operations</h3>
+            <ul>
+              <li>Enhanced durability and low maintenance</li>
+              <li>Reduced replacement costs versus conventional electrolysis or solar systems</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="header">
+        <div class="deck-label">Plasmonic Hydrogen Power Generator</div>
+        <div class="slide-index">Slide 04 / 06</div>
+      </div>
+      <nav class="tabs">
+        <span class="tab">01 Overview</span>
+        <span class="tab">02 How It Works</span>
+        <span class="tab">03 Advantages I</span>
+        <span class="tab active">04 Advantages II</span>
+        <span class="tab">05 Why It Matters</span>
+        <span class="tab">06 Future Vision</span>
+      </nav>
+      <div class="content">
+        <article class="panel">
+          <h2>System-Level Value</h2>
+          <p>Energy Independence and Security: hydrogen fuel is generated locally from water and sunlight to reduce dependence on imported fossil fuels and strengthen energy sovereignty.</p>
+          <p>Future-Proof Integration: the system is described as compatible with existing hydrogen infrastructure, electric grids, and renewable platforms.</p>
+          <p>Carbon-Free Cycle: from hydrogen production through power output, every stage is presented as operating with zero greenhouse-gas emissions.</p>
+        </article>
+        <aside class="panel">
+          <div class="metrics">
+            <div class="metric">
+              <h4>Independence</h4>
+              <p>Local hydrogen generation from water + sunlight</p>
+            </div>
+            <div class="metric">
+              <h4>Continuity</h4>
+              <p>Stored hydrogen supports day/night power delivery</p>
+            </div>
+            <div class="metric">
+              <h4>Integration</h4>
+              <p>Compatible with hydrogen infrastructure and electric grids</p>
+            </div>
+            <div class="metric">
+              <h4>Decarbonization</h4>
+              <p>Carbon-free cycle claim across production to output</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="header">
+        <div class="deck-label">Plasmonic Hydrogen Power Generator</div>
+        <div class="slide-index">Slide 05 / 06</div>
+      </div>
+      <nav class="tabs">
+        <span class="tab">01 Overview</span>
+        <span class="tab">02 How It Works</span>
+        <span class="tab">03 Advantages I</span>
+        <span class="tab">04 Advantages II</span>
+        <span class="tab active">05 Why It Matters</span>
+        <span class="tab">06 Future Vision</span>
+      </nav>
+      <div class="content">
+        <article class="panel">
+          <h2>Why It’s a Game-Changer</h2>
+          <p>Imagine a power system that draws energy from sunlight, stores it as hydrogen fuel, and delivers reliable electricity anytime without pollution or carbon emissions.</p>
+          <p>Unlike conventional renewables that depend on weather, this approach stores clean energy for use anytime and supports 24/7 availability.</p>
+          <p>It is positioned as a flexible foundation for homes, industries, and national grids to support energy independence.</p>
+        </article>
+        <aside class="panel cards">
+          <div class="card"><p><strong>Zero Emissions:</strong> only water vapor is released.</p></div>
+          <div class="card"><p><strong>24/7 Power:</strong> sunlight stored as hydrogen for round-the-clock operation.</p></div>
+          <div class="card"><p><strong>Efficient and Reliable:</strong> presented as converting more energy from light than traditional solar systems.</p></div>
+          <div class="card"><p><strong>Built to Last:</strong> durable components reduce maintenance and downtime.</p></div>
+          <div class="card"><p><strong>Energy Independence:</strong> local clean-power generation for communities and nations.</p></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="header">
+        <div class="deck-label">Plasmonic Hydrogen Power Generator</div>
+        <div class="slide-index">Slide 06 / 06</div>
+      </div>
+      <nav class="tabs">
+        <span class="tab">01 Overview</span>
+        <span class="tab">02 How It Works</span>
+        <span class="tab">03 Advantages I</span>
+        <span class="tab">04 Advantages II</span>
+        <span class="tab">05 Why It Matters</span>
+        <span class="tab active">06 Future Vision</span>
+      </nav>
+      <div class="content">
+        <article class="panel">
+          <h2>A Vision for the Future</h2>
+          <p>The Plasmonic Hydrogen Power Generator is described as a transformative platform uniting advanced nanotechnology with sustainable engineering.</p>
+          <p>By unlocking hydrogen through plasmonic innovation, it is presented as a clean, efficient, and renewable pathway toward global energy independence.</p>
+          <p>The platform is positioned for decentralized, emission-free power systems across transportation, industry, and grid applications, from compact modular units to national infrastructure.</p>
+        </article>
+        <aside class="panel cards">
+          <div class="card">
+            <h3 class="card-title">Closing Frame</h3>
+            <ul>
+              <li>Scientific precision + commercial scalability</li>
+              <li>Compatible with current infrastructure</li>
+              <li>Supports transition toward a zero-carbon world</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

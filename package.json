@@ -1,0 +1,45 @@
+{
+  "name": "vinci",
+  "version": "1.0.0",
+  "description": "Vinci - Isometric scientific SVG illustration builder",
+  "type": "module",
+  "scripts": {
+    "sync:assets": "node scripts/sync-reference-assets.mjs",
+    "predev": "npm run sync:assets",
+    "dev": "vite",
+    "prebuild": "npm run sync:assets",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui"
+  },
+  "keywords": [
+    "svg",
+    "isometric",
+    "scientific-illustration",
+    "react"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^6.30.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^25.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/ui": "^2.1.9",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.9"
+  }
+}
