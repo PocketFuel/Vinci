@@ -90,6 +90,8 @@ export function renderNode(node: Node, tokens: TokenSet, ctx: RenderContext): st
       return renderPlantCell(node, tokens, ctx, attrs);
     case "cell-cluster":
       return renderCellCluster(node, tokens, ctx, attrs);
+    case "image-panel":
+      return renderImagePanel(node, tokens, ctx, attrs);
     default:
       return "";
   }
@@ -200,6 +202,21 @@ export function sampleNodeWorldPoints(node: Node): Vector3[] {
         { x: w, y: -h, z: d },
         { x: -w, y: h, z: d },
         { x: w, y: h, z: d },
+      ];
+    }
+    case "image-panel": {
+      const w = asNumber(node.params.width, 3.2) / 2;
+      const d = asNumber(node.params.depth, 2.1) / 2;
+      const h = asNumber(node.params.thickness, 0.14) / 2;
+      return [
+        { x: -w, y: -h, z: -d },
+        { x: w, y: -h, z: -d },
+        { x: w, y: -h, z: d },
+        { x: -w, y: -h, z: d },
+        { x: -w, y: h, z: -d },
+        { x: w, y: h, z: -d },
+        { x: w, y: h, z: d },
+        { x: -w, y: h, z: d },
       ];
     }
     case "cylinder":
@@ -2065,6 +2082,81 @@ function renderCellCluster(node: Node, tokens: TokenSet, ctx: RenderContext, att
   return `<g ${attrs}>${nodes.join("")}</g>`;
 }
 
+function renderImagePanel(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: string): string {
+  const width = asNumber(node.params.width, 3.4);
+  const depth = asNumber(node.params.depth, 2.2);
+  const thickness = Math.max(0.06, asNumber(node.params.thickness, 0.14));
+  const imageHref = asString(node.params.href, "");
+  const imageOpacity = clamp(asNumber(node.params.imageOpacity, 0.92), 0, 1);
+
+  const halfW = width / 2;
+  const halfD = depth / 2;
+  const topY = -thickness / 2;
+  const bottomY = thickness / 2;
+
+  const top = {
+    tl: projectNodePoint(node, { x: -halfW, y: topY, z: -halfD }, ctx),
+    tr: projectNodePoint(node, { x: halfW, y: topY, z: -halfD }, ctx),
+    br: projectNodePoint(node, { x: halfW, y: topY, z: halfD }, ctx),
+    bl: projectNodePoint(node, { x: -halfW, y: topY, z: halfD }, ctx),
+  };
+  const bottom = {
+    tl: projectNodePoint(node, { x: -halfW, y: bottomY, z: -halfD }, ctx),
+    tr: projectNodePoint(node, { x: halfW, y: bottomY, z: -halfD }, ctx),
+    br: projectNodePoint(node, { x: halfW, y: bottomY, z: halfD }, ctx),
+    bl: projectNodePoint(node, { x: -halfW, y: bottomY, z: halfD }, ctx),
+  };
+
+  const frame = `
+    ${facePolygon(
+      [top.tl, top.tr, top.br, top.bl],
+      normalizeHex(tokens.fillTop),
+      normalizeHex(tokens.inkPrimary),
+      Math.max(tokens.lineWidth, 0.95),
+      "face-hatch-top"
+    )}
+    ${facePolygon(
+      [top.tl, top.bl, bottom.bl, bottom.tl],
+      normalizeHex(tokens.fillLeft),
+      normalizeHex(tokens.inkPrimary),
+      Math.max(tokens.lineWidth - 0.2, 0.75),
+      "face-hatch-left"
+    )}
+    ${facePolygon(
+      [top.tr, top.br, bottom.br, bottom.tr],
+      normalizeHex(tokens.fillRight),
+      normalizeHex(tokens.inkPrimary),
+      Math.max(tokens.lineWidth - 0.2, 0.75),
+      "face-hatch-right"
+    )}
+  `;
+
+  let imageMarkup = "";
+  if (imageHref.trim().length > 0) {
+    const safeNodeId = sanitizeSvgId(node.id);
+    const clipId = `image-panel-clip-${safeNodeId}`;
+    const minX = Math.min(top.tl.x, top.tr.x, top.br.x, top.bl.x);
+    const maxX = Math.max(top.tl.x, top.tr.x, top.br.x, top.bl.x);
+    const minY = Math.min(top.tl.y, top.tr.y, top.br.y, top.bl.y);
+    const maxY = Math.max(top.tl.y, top.tr.y, top.br.y, top.bl.y);
+
+    imageMarkup = `
+      <clipPath id="${clipId}">
+        <polygon points="${pointsText([top.tl, top.tr, top.br, top.bl])}"/>
+      </clipPath>
+      <image href="${escapeAttribute(imageHref)}" x="${minX}" y="${minY}" width="${Math.max(
+        1,
+        maxX - minX
+      )}" height="${Math.max(1, maxY - minY)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})" opacity="${imageOpacity}"/>
+      <polyline points="${pointsText([top.tl, top.tr, top.br, top.bl, top.tl])}" fill="none" stroke="${normalizeHex(
+        tokens.inkPrimary
+      )}" stroke-width="${Math.max(tokens.lineWidth + 0.32, 1.12)}"/>
+    `;
+  }
+
+  return `<g ${attrs}>${frame}${imageMarkup}</g>`;
+}
+
 function renderAnchor(node: Node, tokens: TokenSet, ctx: RenderContext, attrs: string): string {
   const p = projectNodePoint(node, { x: 0, y: 0, z: 0 }, ctx);
   return `<circle ${attrs} cx="${p.x}" cy="${p.y}" r="2" fill="${normalizeHex(tokens.inkPrimary)}"/>`;
@@ -2987,6 +3079,14 @@ function atomRadiusWorld(value: number): number {
 
 function sanitizeSvgId(value: string): string {
   return value.replaceAll(/[^a-zA-Z0-9_-]+/g, "-");
+}
+
+function escapeAttribute(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function mixHex(a: string, b: string, t: number): string {

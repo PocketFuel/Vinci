@@ -14,7 +14,7 @@ describe("schema validation", () => {
     Object.values(presetScenes).forEach((scene) => {
       expect(() => sceneDocumentSchema.parse(scene)).not.toThrow();
       const parsed = sceneDocumentSchema.parse(scene);
-      expect(parsed.version).toBe("1.2.0");
+      expect(parsed.version).toBe("1.4.0");
       expect(parsed.annotations.labels.every((label) => Boolean(label.targetNodeId))).toBe(true);
       expect(parsed.responsive.mode).toBe("adaptive");
       expect(parsed.composition.subjectNodeIds.length).toBeGreaterThan(0);

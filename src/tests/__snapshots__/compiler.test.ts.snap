@@ -2,6 +2,7 @@
 
 exports[`SVG compiler > emits stable svg structure for a preset 1`] = `
 "<svg xmlns="http://www.w3.org/2000/svg" width="900" height="540" viewBox="0 0 900 540" role="img" aria-label="Plasmonic Array Field Focus">
+  <metadata id="scene-metadata">{&quot;sceneId&quot;:&quot;ec-01-plasmonic-array-field-focus&quot;,&quot;version&quot;:&quot;1.4.0&quot;,&quot;title&quot;:&quot;Plasmonic Array Field Focus&quot;,&quot;concept&quot;:&quot;energy-creation&quot;,&quot;scientificMode&quot;:&quot;source-locked&quot;,&quot;referencePackId&quot;:&quot;plasmonic-energy&quot;,&quot;validation&quot;:{&quot;score&quot;:0,&quot;ready&quot;:false,&quot;reviewedAt&quot;:&quot;2026-02-28T00:00:00.000Z&quot;,&quot;checklist&quot;:[{&quot;id&quot;:&quot;required-parts-present&quot;,&quot;passed&quot;:false,&quot;required&quot;:true},{&quot;id&quot;:&quot;claims-backed&quot;,&quot;passed&quot;:false,&quot;required&quot;:true},{&quot;id&quot;:&quot;labels-mapped&quot;,&quot;passed&quot;:false,&quot;required&quot;:true}]},&quot;claims&quot;:[{&quot;id&quot;:&quot;ec-01-plasmonic-array-field-focus-claim-1&quot;,&quot;sourceIds&quot;:[],&quot;status&quot;:&quot;draft&quot;,&quot;confidence&quot;:0.56}]}</metadata>
   <defs>
     <pattern id="face-hatch-top" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(30)">
       <line x1="0" y1="0" x2="0" y2="10" stroke="#5E5546" stroke-opacity="0.122" stroke-width="0.8"/>

@@ -1,0 +1,42 @@
+{
+  "id": "saffron-anatomy",
+  "title": "Saffron Flower Anatomy",
+  "domain": "botany",
+  "concept": "saffron-growth",
+  "requiredParts": [
+    { "id": "stigma", "label": "Stigma", "synonyms": ["stigma", "stigmata"] },
+    { "id": "stamen", "label": "Stamen", "synonyms": ["stamen", "anther", "filament"] },
+    { "id": "petals", "label": "Petals", "synonyms": ["petals", "tepals"] },
+    { "id": "perianth-tube", "label": "Perianth Tube", "synonyms": ["perianth tube", "floral tube"] },
+    { "id": "leaves", "label": "Leaves", "synonyms": ["leaves", "leaf"] },
+    { "id": "corm", "label": "Corm", "synonyms": ["corm", "bulb"] },
+    { "id": "roots", "label": "Roots", "synonyms": ["roots", "root"] }
+  ],
+  "claimTemplates": [
+    "Crocus sativus reproductive anatomy includes stigmas used for spice harvest.",
+    "Corm and root structures support early stage emergence and nutrient uptake."
+  ],
+  "sources": [
+    {
+      "id": "rhs-crocus-sativus",
+      "title": "Crocus sativus",
+      "url": "https://www.rhs.org.uk/plants/4551/crocus-sativus/details",
+      "publisher": "Royal Horticultural Society",
+      "year": 2025,
+      "type": "organization"
+    },
+    {
+      "id": "britannica-saffron",
+      "title": "Saffron (spice and plant)",
+      "url": "https://www.britannica.com/plant/saffron",
+      "publisher": "Encyclopaedia Britannica",
+      "year": 2024,
+      "type": "organization"
+    }
+  ],
+  "validationChecklist": [
+    { "id": "required-parts", "name": "Required saffron parts are labeled", "required": true },
+    { "id": "claim-sources", "name": "Every claim has a source", "required": true },
+    { "id": "anchor-confidence", "name": "All callout anchors meet confidence threshold", "required": true }
+  ]
+}

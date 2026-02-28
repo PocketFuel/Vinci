@@ -1,14 +1,14 @@
-import { ensureSceneV12 } from "./migrations";
+import { ensureSceneV14 } from "./migrations";
 import type { SceneDocument } from "./types";
 
 export function sceneToJson(scene: SceneDocument): string {
-  const normalized = ensureSceneV12(scene);
+  const normalized = ensureSceneV14(scene);
   return JSON.stringify(normalized, null, 2);
 }
 
 export function jsonToScene(json: string): SceneDocument {
   const parsed = JSON.parse(json) as unknown;
-  return ensureSceneV12(parsed);
+  return ensureSceneV14(parsed);
 }
 
 export function saveFile(filename: string, content: string, mime: string): void {

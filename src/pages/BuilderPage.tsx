@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
+  AlertTriangle,
   Boxes,
+  Bot,
   Camera,
+  CheckCircle2,
   Component,
   Download,
   Eye,
@@ -24,6 +27,7 @@ import {
   Sparkles,
   Trash2,
   Undo2,
+  Wand2,
   Wrench,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -44,9 +48,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../com
 import { compileSceneToSvg } from "../engine/compiler";
 import { jsonToScene, saveFile, sceneToJson } from "../engine/exporters";
 import { cameraPresets, screenDeltaToWorldXZ } from "../engine/projection";
+import { validateSceneScientificGrounding } from "../engine/scientificValidation";
 import type { CameraPresetId, Node, SceneDocument, Vector3 } from "../engine/types";
 import { getSceneByPresetId, presetManifest } from "../data/presets";
+import { getReferencePackById, referencePacks } from "../data/referencePacks";
+import type { OrganicConcept, OrganicGenerationRequest, OrganicGenerationResponse, OrganicStyleProfile } from "../agent/types";
 import { loadSceneFromDb, saveSceneToDb } from "../lib/sceneDb";
+import { autoAnchorLabels, createOrganicGenerationJob, getOrganicGenerationJob, validateScientificScene } from "../lib/organicAgentClient";
 
 function SliderField({
   label,
@@ -111,6 +119,19 @@ const shapeLibrary: ShapeLibraryItem[] = [
   { id: "cell-cluster", label: "Cell Cluster", type: "cell-cluster", processRole: "organic", params: { rows: 3, cols: 4, spacing: 0.78, cellWidth: 0.68, cellHeight: 0.84, cellDepth: 0.46 } },
 ];
 
+const organicConceptOptions: Array<{ id: OrganicConcept; label: string; defaultPackId: string }> = [
+  { id: "saffron-anatomy", label: "Saffron anatomy", defaultPackId: "saffron-anatomy" },
+  { id: "plant-cell", label: "Plant cell structure", defaultPackId: "plant-cell" },
+  { id: "plant-tissues", label: "Plant tissue comparison", defaultPackId: "plant-tissues" },
+  { id: "plasmonic-reaction", label: "Plasmonic reaction diagram", defaultPackId: "plasmonic-energy" },
+];
+
+const organicStyleOptions: Array<{ id: OrganicStyleProfile; label: string }> = [
+  { id: "watercolor-botanical", label: "Watercolor botanical" },
+  { id: "technical-plate", label: "Technical plate" },
+  { id: "hybrid", label: "Hybrid" },
+];
+
 export function BuilderPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const presetFromUrl = searchParams.get("preset") ?? presetManifest[0].presetId;
@@ -130,9 +151,26 @@ export function BuilderPage() {
   const [insertPosition, setInsertPosition] = useState<Vector3>({ x: 0, y: 2.1, z: 0 });
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [toolTab, setToolTab] = useState<"presets" | "library" | "design">("presets");
+  const [toolTab, setToolTab] = useState<"presets" | "library" | "generate" | "design">("presets");
   const [presetSearch, setPresetSearch] = useState("");
   const [librarySearch, setLibrarySearch] = useState("");
+  const [organicConcept, setOrganicConcept] = useState<OrganicConcept>("saffron-anatomy");
+  const [organicStyleProfile, setOrganicStyleProfile] = useState<OrganicStyleProfile>("watercolor-botanical");
+  const [organicReferencePackId, setOrganicReferencePackId] = useState("saffron-anatomy");
+  const [organicRequiredParts, setOrganicRequiredParts] = useState<string[]>(() =>
+    getReferencePackById("saffron-anatomy")?.requiredParts.map((part) => part.id) ?? []
+  );
+  const [organicOrientation, setOrganicOrientation] = useState<"portrait" | "landscape" | "square">("portrait");
+  const [organicBackground, setOrganicBackground] = useState<"paper" | "clean-white" | "dark-plate">("paper");
+  const [scientificMode, setScientificMode] = useState<OrganicGenerationRequest["strictnessMode"]>("source-locked");
+  const [generationStatus, setGenerationStatus] = useState<"idle" | "running" | "error" | "success">("idle");
+  const [generationMessage, setGenerationMessage] = useState("No generation request yet.");
+  const [lastGenerationResponse, setLastGenerationResponse] = useState<OrganicGenerationResponse | null>(null);
+  const [lastGenerationRequest, setLastGenerationRequest] = useState<OrganicGenerationRequest | null>(null);
+  const [generationHistory, setGenerationHistory] = useState<
+    Array<{ jobId: string; concept: OrganicConcept; style: OrganicStyleProfile; createdAt: string }>
+  >([]);
+  const [reviewNotesDraft, setReviewNotesDraft] = useState("");
 
   const viewport = useMemo(() => ({ width: 1920, height: 1080 }), []);
 
@@ -147,6 +185,10 @@ export function BuilderPage() {
   const selectedLibraryShape = useMemo(
     () => shapeLibrary.find((entry) => entry.id === libraryShapeId) ?? shapeLibrary[0],
     [libraryShapeId]
+  );
+  const activeReferencePack = useMemo(
+    () => getReferencePackById(organicReferencePackId) ?? referencePacks[0],
+    [organicReferencePackId]
   );
 
   const filteredPresets = useMemo(() => {
@@ -176,6 +218,23 @@ export function BuilderPage() {
       );
     });
   }, [librarySearch]);
+
+  useEffect(() => {
+    const option = organicConceptOptions.find((entry) => entry.id === organicConcept);
+    if (!option) {
+      return;
+    }
+    const pack = getReferencePackById(option.defaultPackId);
+    if (!pack) {
+      return;
+    }
+    setOrganicReferencePackId(pack.id);
+    setOrganicRequiredParts(pack.requiredParts.map((part) => part.id));
+  }, [organicConcept]);
+
+  useEffect(() => {
+    setReviewNotesDraft(scene.meta.validation.notes ?? "");
+  }, [scene.id, scene.meta.validation.notes]);
 
   const presetPreviewMap = useMemo(() => {
     return Object.fromEntries(
@@ -230,6 +289,12 @@ export function BuilderPage() {
         setRedoStack([]);
         setSelectedNodeId(null);
         setAnnotationLayoutMode("auto-outside");
+        setScientificMode(nextScene.meta.scientificMode);
+        setOrganicReferencePackId(nextScene.meta.referencePackId);
+        const pack = getReferencePackById(nextScene.meta.referencePackId);
+        if (pack) {
+          setOrganicRequiredParts(pack.requiredParts.map((part) => part.id));
+        }
         setSceneReady(true);
         setStatus(persisted ? `Loaded saved scene: ${selectedPresetId}` : `Loaded preset: ${selectedPresetId}`);
       } catch {
@@ -243,6 +308,12 @@ export function BuilderPage() {
         setRedoStack([]);
         setSelectedNodeId(null);
         setAnnotationLayoutMode("auto-outside");
+        setScientificMode(fallbackScene.meta.scientificMode);
+        setOrganicReferencePackId(fallbackScene.meta.referencePackId);
+        const pack = getReferencePackById(fallbackScene.meta.referencePackId);
+        if (pack) {
+          setOrganicRequiredParts(pack.requiredParts.map((part) => part.id));
+        }
         setSceneReady(true);
         setStatus(`Loaded preset (db unavailable): ${selectedPresetId}`);
         setDbStatus("error");
@@ -717,7 +788,7 @@ export function BuilderPage() {
   function exportJson() {
     const json = sceneToJson(scene);
     saveFile(`${scene.id}.json`, json, "application/json");
-    setStatus("Exported Scene JSON (v1.2)");
+    setStatus("Exported Scene JSON (v1.4)");
   }
 
   async function importJson(event: React.ChangeEvent<HTMLInputElement>) {
@@ -742,6 +813,238 @@ export function BuilderPage() {
     }
   }
 
+  function toggleRequiredPart(partId: string, checked: boolean) {
+    setOrganicRequiredParts((previous) => {
+      if (checked) {
+        if (previous.includes(partId)) {
+          return previous;
+        }
+        return [...previous, partId];
+      }
+      return previous.filter((id) => id !== partId);
+    });
+  }
+
+  function buildGenerationRequest(lockStructure: boolean): OrganicGenerationRequest {
+    return {
+      concept: organicConcept,
+      styleProfile: organicStyleProfile,
+      requiredParts: organicRequiredParts,
+      compositionHints: {
+        orientation: organicOrientation,
+        focalHierarchy: organicRequiredParts.slice(0, 4),
+        background: organicBackground,
+      },
+      referencePackId: organicReferencePackId,
+      strictnessMode: scientificMode,
+      lockStructure,
+      variationSeed: Math.floor(Math.random() * 100000),
+    };
+  }
+
+  async function generateOrganic(lockStructure: boolean) {
+    const request = buildGenerationRequest(lockStructure);
+    setGenerationStatus("running");
+    setGenerationMessage("Generating organic scene draft...");
+    setLastGenerationRequest(request);
+
+    try {
+      let response = await createOrganicGenerationJob(request);
+      let attempts = 0;
+      while ((response.status === "queued" || response.status === "running") && attempts < 12) {
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        response = await getOrganicGenerationJob(response.jobId);
+        attempts += 1;
+      }
+      if (response.status !== "succeeded") {
+        throw new Error(response.error ?? "Generation did not complete successfully.");
+      }
+      setLastGenerationResponse(response);
+      setGenerationHistory((previous) => [
+        {
+          jobId: response.jobId,
+          concept: request.concept,
+          style: request.styleProfile,
+          createdAt: new Date().toISOString(),
+        },
+        ...previous,
+      ].slice(0, 12));
+      setGenerationStatus("success");
+      setGenerationMessage("Generation complete. Apply image and labels when ready.");
+      applyGeneratedImageLayer(response);
+    } catch (error) {
+      setGenerationStatus("error");
+      setGenerationMessage((error as Error).message);
+    }
+  }
+
+  function applyGeneratedImageLayer(response: OrganicGenerationResponse) {
+    if (!response.imageAsset) {
+      setStatus("Generated response had no image asset.");
+      return;
+    }
+
+    const panelWidth = 5.2;
+    const panelDepth = 3.2;
+    const panelY = 2.18;
+    const imageNodeId = createUniqueNodeId(scene.nodes, "organic-image-panel");
+    const center = { x: 0, y: panelY, z: 0 };
+    const hintLabels = response.anchorHints.slice(0, 10).map((hint, index) => {
+      const worldX = center.x + (hint.x - 0.5) * panelWidth * 0.86;
+      const worldZ = center.z + (hint.y - 0.5) * panelDepth * 0.86;
+      return {
+        id: `auto-${imageNodeId}-label-${index + 1}`,
+        text: humanizePartId(hint.partId),
+        at: { x: worldX, y: panelY - 0.12, z: worldZ },
+        targetNodeId: imageNodeId,
+        targetPortId: "center",
+        anchorBias: worldX < center.x ? ("left" as const) : ("right" as const),
+        priority: 2,
+      };
+    });
+
+    setScene((previous) => {
+      const keptNodes = previous.nodes.filter((node) => node.type !== "image-panel");
+      const imageNode: Node = {
+        id: imageNodeId,
+        type: "image-panel",
+        layerId: "main",
+        transform3D: {
+          position: center,
+          rotation: { x: 0, y: 0, z: 0 },
+          scale: 1,
+        },
+        styleRef: previous.tokens.id,
+        params: {
+          width: panelWidth,
+          depth: panelDepth,
+          thickness: 0.16,
+          href: response.imageAsset?.url ?? "",
+          imageOpacity: 0.95,
+        },
+        children: [],
+        processRole: "organic",
+        processGroup: "generated",
+        renderPriority: 5,
+        ports: [
+          { id: "left", local: { x: -panelWidth / 2, y: 0, z: 0 }, direction: "bidirectional" },
+          { id: "right", local: { x: panelWidth / 2, y: 0, z: 0 }, direction: "bidirectional" },
+          { id: "top", local: { x: 0, y: -0.05, z: -panelDepth / 2 }, direction: "out" },
+          { id: "bottom", local: { x: 0, y: 0.05, z: panelDepth / 2 }, direction: "in" },
+          { id: "center", local: { x: 0, y: 0, z: 0 }, direction: "bidirectional" },
+        ],
+      };
+
+      return {
+        ...previous,
+        nodes: [...keptNodes, imageNode],
+        composition: {
+          ...previous.composition,
+          subjectNodeIds: [imageNode.id, ...previous.composition.subjectNodeIds.filter((id) => id !== imageNode.id)],
+          focalNodeIds: [imageNode.id, ...previous.composition.focalNodeIds.filter((id) => id !== imageNode.id)].slice(0, 5),
+        },
+        annotations: {
+          ...previous.annotations,
+          labels: [...previous.annotations.labels.filter((label) => !label.id.startsWith("auto-organic-image-panel")), ...hintLabels],
+        },
+        meta: {
+          ...previous.meta,
+          scientificMode: scientificMode,
+          referencePackId: organicReferencePackId,
+          validation: response.validationPrecheck,
+        },
+      };
+    });
+    setStatus("Applied generated image panel and seeded labels.");
+  }
+
+  async function applyAnchorsFromService() {
+    if (!lastGenerationResponse) {
+      setStatus("Generate an image first before auto-anchor.");
+      return;
+    }
+    try {
+      const labels = scene.annotations.labels.map((label) => ({ id: label.id, text: label.text }));
+      const anchored = await autoAnchorLabels({
+        referencePackId: organicReferencePackId,
+        hints: lastGenerationResponse.anchorHints,
+        labels,
+      });
+
+      const panelNode = scene.nodes.find((node) => node.type === "image-panel");
+      if (!panelNode) {
+        setStatus("No generated image panel found in scene.");
+        return;
+      }
+      const panelWidth = typeof panelNode.params.width === "number" ? panelNode.params.width : 5.2;
+      const panelDepth = typeof panelNode.params.depth === "number" ? panelNode.params.depth : 3.2;
+      const center = panelNode.transform3D.position;
+
+      setScene((previous) => ({
+        ...previous,
+        annotations: {
+          ...previous.annotations,
+          labels: previous.annotations.labels.map((label, index) => {
+            const hint = anchored.anchors[index];
+            if (!hint) {
+              return label;
+            }
+            return {
+              ...label,
+              text: label.text,
+              at: {
+                x: center.x + (hint.x - 0.5) * panelWidth * 0.86,
+                y: center.y - 0.12,
+                z: center.z + (hint.y - 0.5) * panelDepth * 0.86,
+              },
+            };
+          }),
+        },
+      }));
+      setStatus("Applied auto-anchored callout positions.");
+    } catch (error) {
+      setStatus(`Auto-anchor failed: ${(error as Error).message}`);
+    }
+  }
+
+  async function runScientificValidation() {
+    try {
+      const response = await validateScientificScene({ scene, scoreThreshold: 80 });
+      setScene((previous) => ({
+        ...previous,
+        meta: {
+          ...previous.meta,
+          validation: response.validation,
+        },
+      }));
+      setStatus(response.validation.ready ? "Source-Locked gate passed." : "Source-Locked gate failed.");
+    } catch (error) {
+      const localValidation = validateSceneScientificGrounding(scene, { scoreThreshold: 80, reviewedBy: "local-validator" });
+      setScene((previous) => ({
+        ...previous,
+        meta: {
+          ...previous.meta,
+          validation: localValidation,
+        },
+      }));
+      setStatus(`Validation API unavailable. Used local validator: ${(error as Error).message}`);
+    }
+  }
+
+  function saveReviewNotes() {
+    setScene((previous) => ({
+      ...previous,
+      meta: {
+        ...previous.meta,
+        validation: {
+          ...previous.meta.validation,
+          notes: reviewNotesDraft,
+        },
+      },
+    }));
+    setStatus("Saved scientific review notes.");
+  }
+
   const controls = (
     <TooltipProvider>
       <Card className="h-full overflow-hidden border-border/90 bg-card/85 shadow-sm">
@@ -754,8 +1057,8 @@ export function BuilderPage() {
         </CardHeader>
         <CardContent className="h-[calc(100%-96px)] px-3 pb-3 pt-3">
           <div className="h-full overflow-hidden rounded-xl border border-border bg-background/70">
-            <Tabs value={toolTab} onValueChange={(value) => setToolTab(value as "presets" | "library" | "design")} className="flex h-full flex-col">
-              <TabsList className="m-2 grid grid-cols-3 gap-1 rounded-xl bg-muted/70 p-1">
+            <Tabs value={toolTab} onValueChange={(value) => setToolTab(value as "presets" | "library" | "generate" | "design")} className="flex h-full flex-col">
+              <TabsList className="m-2 grid grid-cols-4 gap-1 rounded-xl bg-muted/70 p-1">
                 <TabsTrigger value="presets" className="gap-1.5">
                   <Grid3X3 className="h-4 w-4" />
                   Presets
@@ -763,6 +1066,10 @@ export function BuilderPage() {
                 <TabsTrigger value="library" className="gap-1.5">
                   <Component className="h-4 w-4" />
                   Library
+                </TabsTrigger>
+                <TabsTrigger value="generate" className="gap-1.5">
+                  <Bot className="h-4 w-4" />
+                  Generate
                 </TabsTrigger>
                 <TabsTrigger value="design" className="gap-1.5">
                   <Wrench className="h-4 w-4" />
@@ -905,6 +1212,221 @@ export function BuilderPage() {
                   {filteredLibrary.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">No components match this search.</div>
                   ) : null}
+                </TabsContent>
+
+                <TabsContent value="generate" className="mt-0 grid gap-3">
+                  <div className="rounded-xl border border-border bg-card/80 p-3">
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold">Organic Image Agent</p>
+                        <p className="text-xs text-muted-foreground">Server-side Google generation with Source-Locked controls.</p>
+                      </div>
+                      <Badge className="capitalize">{scientificMode.replaceAll("-", " ")}</Badge>
+                    </div>
+
+                    <div className="grid gap-3">
+                      <div className="grid gap-1.5">
+                        <Label>Concept template</Label>
+                        <Select value={organicConcept} onValueChange={(value) => setOrganicConcept(value as OrganicConcept)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select concept" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {organicConceptOptions.map((option) => (
+                              <SelectItem key={option.id} value={option.id}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid gap-1.5">
+                        <Label>Style profile</Label>
+                        <Select value={organicStyleProfile} onValueChange={(value) => setOrganicStyleProfile(value as OrganicStyleProfile)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select style" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {organicStyleOptions.map((option) => (
+                              <SelectItem key={option.id} value={option.id}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid gap-1.5">
+                        <Label>Scientific mode</Label>
+                        <Select
+                          value={scientificMode}
+                          onValueChange={(value) => setScientificMode(value as OrganicGenerationRequest["strictnessMode"])}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select mode" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="source-locked">source-locked</SelectItem>
+                            <SelectItem value="guided-creative">guided-creative</SelectItem>
+                            <SelectItem value="fast-draft">fast-draft</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-1.5">
+                          <Label>Orientation</Label>
+                          <Select value={organicOrientation} onValueChange={(value) => setOrganicOrientation(value as "portrait" | "landscape" | "square")}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="portrait">portrait</SelectItem>
+                              <SelectItem value="landscape">landscape</SelectItem>
+                              <SelectItem value="square">square</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label>Background</Label>
+                          <Select value={organicBackground} onValueChange={(value) => setOrganicBackground(value as "paper" | "clean-white" | "dark-plate")}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="paper">paper</SelectItem>
+                              <SelectItem value="clean-white">clean-white</SelectItem>
+                              <SelectItem value="dark-plate">dark-plate</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-card/80 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <Label className="text-sm font-semibold">Required parts checklist</Label>
+                      <Badge>{organicRequiredParts.length}</Badge>
+                    </div>
+                    <div className="grid gap-2">
+                      {activeReferencePack?.requiredParts.map((part) => {
+                        const checked = organicRequiredParts.includes(part.id);
+                        return (
+                          <div key={part.id} className="flex items-center justify-between rounded-lg border border-border/70 bg-background/70 px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm">{part.label}</p>
+                              <p className="truncate text-xs text-muted-foreground">{part.id}</p>
+                            </div>
+                            <Switch checked={checked} onCheckedChange={(value) => toggleRequiredPart(part.id, value)} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button className="gap-2" onClick={() => void generateOrganic(false)} disabled={generationStatus === "running"}>
+                      <Sparkles className="h-4 w-4" />
+                      Generate Draft
+                    </Button>
+                    <Button variant="secondary" className="gap-2" onClick={() => void generateOrganic(false)} disabled={generationStatus === "running"}>
+                      <Wand2 className="h-4 w-4" />
+                      Regenerate
+                    </Button>
+                    <Button variant="outline" className="gap-2" onClick={() => void generateOrganic(true)} disabled={generationStatus === "running"}>
+                      <Bot className="h-4 w-4" />
+                      Lock Structure
+                    </Button>
+                    <Button variant="outline" className="gap-2" onClick={() => void applyAnchorsFromService()} disabled={!lastGenerationResponse}>
+                      <Route className="h-4 w-4" />
+                      Apply Labels
+                    </Button>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-card/80 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      {generationStatus === "success" ? (
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                      ) : generationStatus === "error" ? (
+                        <AlertTriangle className="h-4 w-4 text-red-700" />
+                      ) : (
+                        <Bot className="h-4 w-4 text-primary" />
+                      )}
+                      <p className="text-sm font-semibold">Generation status</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{generationMessage}</p>
+                    {lastGenerationResponse?.imageAsset ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Asset: {lastGenerationResponse.imageAsset.id} · {lastGenerationResponse.imageAsset.width}x
+                        {lastGenerationResponse.imageAsset.height}
+                      </p>
+                    ) : null}
+                    {lastGenerationRequest ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Last request: {lastGenerationRequest.concept} · {lastGenerationRequest.styleProfile}
+                      </p>
+                    ) : null}
+                    {generationHistory.length > 0 ? (
+                      <div className="mt-2 rounded-md border border-border/70 bg-background/60 p-2">
+                        <p className="mb-1 text-xs font-semibold text-muted-foreground">Recent jobs</p>
+                        <div className="grid gap-1">
+                          {generationHistory.slice(0, 4).map((job) => (
+                            <p key={job.jobId} className="text-[11px] text-muted-foreground">
+                              {job.jobId} · {job.concept} · {job.style}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-card/80 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-semibold">Source-Locked Gate</p>
+                      <Badge className={scene.meta.validation.ready ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}>
+                        {scene.meta.validation.ready ? "ready" : "not ready"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Score {scene.meta.validation.score}/100 · reference pack {scene.meta.referencePackId}
+                    </p>
+                    <div className="mt-2 grid gap-1.5">
+                      {scene.meta.validation.checklist.map((check) => (
+                        <div key={check.id} className="flex items-start gap-2 rounded-md border border-border/70 bg-background/60 px-2 py-1.5">
+                          {check.passed ? (
+                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-primary" />
+                          ) : (
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 text-amber-700" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium">{check.name}</p>
+                            <p className="text-[11px] text-muted-foreground">{check.notes}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 grid gap-1.5">
+                      <Label htmlFor="review-notes">Scientific review notes</Label>
+                      <Input
+                        id="review-notes"
+                        value={reviewNotesDraft}
+                        onChange={(event) => setReviewNotesDraft(event.target.value)}
+                        placeholder="Add review findings or source notes"
+                      />
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <Button variant="secondary" className="gap-2" onClick={() => void runScientificValidation()}>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Run Validation
+                      </Button>
+                      <Button variant="outline" className="gap-2" onClick={saveReviewNotes}>
+                        <FileJson className="h-4 w-4" />
+                        Save Notes
+                      </Button>
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="design" className="mt-0 grid gap-3">
@@ -1315,6 +1837,14 @@ function createUniqueNodeId(nodes: Node[], baseId: string): string {
   return nextId;
 }
 
+function humanizePartId(value: string): string {
+  return value
+    .replaceAll(/[_-]+/g, " ")
+    .replaceAll(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function iconForNodeType(type: Node["type"]): LucideIcon {
   switch (type) {
     case "chip":
@@ -1411,6 +1941,17 @@ function buildLibraryPreviewScene(shape: ShapeLibraryItem, template: SceneDocume
       concept: template.meta.concept,
       description: `Preview for ${shape.label}`,
       scientificNotes: "Component preview",
+      scientificMode: template.meta.scientificMode,
+      referencePackId: template.meta.referencePackId,
+      claims: [],
+      validation: {
+        checklist: [],
+        score: 0,
+        ready: false,
+        reviewedBy: "library-preview",
+        reviewedAt: new Date("2026-02-28T00:00:00.000Z").toISOString(),
+        notes: "Preview scene only.",
+      },
     },
     camera: { ...cameraPresets["classic-iso"], origin: { x: 0, y: 0 }, manualPan: { x: 0, y: 0 }, manualZoom: 1 },
     nodes: [plateNode, node],

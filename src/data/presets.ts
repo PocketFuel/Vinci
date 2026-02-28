@@ -1,5 +1,5 @@
 import { cameraPresets } from "../engine/projection";
-import { ensureSceneV12 } from "../engine/migrations";
+import { ensureSceneV14 } from "../engine/migrations";
 import type { AnimationSpec, Node, PresetManifest, SceneDocument, Vector3 } from "../engine/types";
 import { vinciPaperWireframe } from "./tokens";
 
@@ -563,15 +563,64 @@ function makeScene(def: {
   const focalSource = subjectNodes.length > 0 ? subjectNodes : def.nodes;
   const focalNodeIds = focalSource.slice(0, 4).map((node) => node.id);
   const subjectNodeIds = (def.subjectNodeIds ?? focalNodeIds).filter((id) => focalSource.some((node) => node.id === id));
+  const referencePackId =
+    def.concept === "saffron-growth"
+      ? "saffron-anatomy"
+      : def.concept === "energy-data-storage"
+      ? "plant-cell"
+      : "plasmonic-energy";
+
+  const defaultChecklist: SceneDocument["meta"]["validation"]["checklist"] = [
+    {
+      id: "required-parts-present",
+      name: "Required parts present",
+      required: true,
+      passed: false,
+      notes: "Review generated/edited labels against required template parts.",
+    },
+    {
+      id: "claims-backed",
+      name: "Claims backed by source references",
+      required: true,
+      passed: false,
+      notes: "Attach source ids to all scientific claims.",
+    },
+    {
+      id: "labels-mapped",
+      name: "Labels mapped to intended structures",
+      required: true,
+      passed: false,
+      notes: "Ensure every annotation connects to intended process structures.",
+    },
+  ];
 
   return {
     id: def.id,
-    version: "1.2.0",
+    version: "1.4.0",
     meta: {
       title: def.title,
       concept: def.concept,
       description: def.description,
       scientificNotes: def.scientificNotes,
+      scientificMode: "source-locked",
+      referencePackId,
+      claims: [
+        {
+          id: `${def.id}-claim-1`,
+          statement: def.scientificNotes,
+          sourceIds: [],
+          confidence: 0.56,
+          status: "draft",
+        },
+      ],
+      validation: {
+        checklist: defaultChecklist,
+        score: 0,
+        ready: false,
+        reviewedBy: "preset-authoring",
+        reviewedAt: new Date("2026-02-28T00:00:00.000Z").toISOString(),
+        notes: "Preset initialized in source-locked mode. Add references before mark-ready.",
+      },
     },
     camera: def.camera ?? { ...cameraPresets["classic-iso"], origin: { x: 0, y: 8 }, scale: 1 },
     responsive: structuredClone(defaultResponsive),
@@ -2140,7 +2189,7 @@ export const presetManifest: PresetManifest[] = [
 export function getSceneByPresetId(presetId: string): SceneDocument {
   const scene = presetScenes[presetId];
   if (!scene) {
-    return ensureSceneV12(structuredClone(ec01));
+    return ensureSceneV14(structuredClone(ec01));
   }
-  return ensureSceneV12(structuredClone(scene));
+  return ensureSceneV14(structuredClone(scene));
 }

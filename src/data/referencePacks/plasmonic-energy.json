@@ -1,0 +1,40 @@
+{
+  "id": "plasmonic-energy",
+  "title": "Plasmonic Hydrogen Process",
+  "domain": "energy",
+  "concept": "energy-creation",
+  "requiredParts": [
+    { "id": "incident-wave", "label": "Incident Wave Input", "synonyms": ["incident wave", "input wave", "light input"] },
+    { "id": "plasmonic-array", "label": "Plasmonic Catalyst Array", "synonyms": ["nanodisk array", "plasmonic array", "catalyst array"] },
+    { "id": "reaction-zone", "label": "Reaction Zone", "synonyms": ["reaction zone", "hotspot", "water splitting"] },
+    { "id": "hydrogen-storage", "label": "Hydrogen Storage", "synonyms": ["hydrogen tank", "h2 storage"] },
+    { "id": "power-output", "label": "Power Output Module", "synonyms": ["power output", "conversion module", "fuel cell"] }
+  ],
+  "claimTemplates": [
+    "Hydrogen can be generated through water electrolysis and stored for later conversion.",
+    "Plasmonic field enhancement is represented conceptually and requires source citation for performance claims."
+  ],
+  "sources": [
+    {
+      "id": "doe-electrolysis",
+      "title": "Hydrogen Production: Electrolysis",
+      "url": "https://www.energy.gov/eere/fuelcells/hydrogen-production-electrolysis",
+      "publisher": "U.S. Department of Energy",
+      "year": 2025,
+      "type": "government"
+    },
+    {
+      "id": "nrel-hydrogen",
+      "title": "Hydrogen and Fuel Cells",
+      "url": "https://www.nrel.gov/hydrogen/",
+      "publisher": "NREL",
+      "year": 2025,
+      "type": "government"
+    }
+  ],
+  "validationChecklist": [
+    { "id": "required-parts", "name": "Required process structures are present", "required": true },
+    { "id": "claim-sources", "name": "Every claim has a source", "required": true },
+    { "id": "anchor-confidence", "name": "All callout anchors meet confidence threshold", "required": true }
+  ]
+}

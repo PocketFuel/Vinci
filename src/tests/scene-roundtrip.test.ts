@@ -9,9 +9,11 @@ describe("scene json roundtrip", () => {
     const restored = jsonToScene(json);
 
     expect(restored.id).toBe(original.id);
-    expect(restored.version).toBe("1.2.0");
+    expect(restored.version).toBe("1.4.0");
     expect(restored.nodes.length).toBe(original.nodes.length);
     expect(restored.tokens.id).toBe("vinci-paper-wireframe");
+    expect(restored.meta.scientificMode).toBe("source-locked");
+    expect(restored.meta.referencePackId.length).toBeGreaterThan(0);
     expect(restored.annotations.equations[0]?.latexLike).toContain("2H2");
     expect(restored.annotations.labels.every((label) => Boolean(label.targetNodeId))).toBe(true);
     expect(restored.composition.subjectNodeIds.length).toBeGreaterThan(0);

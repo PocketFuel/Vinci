@@ -1,0 +1,43 @@
+{
+  "id": "plant-cell",
+  "title": "Plant Cell Structure",
+  "domain": "cell-biology",
+  "concept": "energy-data-storage",
+  "requiredParts": [
+    { "id": "cell-wall", "label": "Cell Wall", "synonyms": ["cell wall"] },
+    { "id": "cell-membrane", "label": "Cell Membrane", "synonyms": ["cell membrane", "plasma membrane"] },
+    { "id": "cytoplasm", "label": "Cytoplasm", "synonyms": ["cytoplasm"] },
+    { "id": "vacuole", "label": "Vacuole", "synonyms": ["vacuole", "central vacuole"] },
+    { "id": "nucleus", "label": "Nucleus", "synonyms": ["nucleus"] },
+    { "id": "chloroplast", "label": "Chloroplast", "synonyms": ["chloroplast", "chloroplasts"] },
+    { "id": "mitochondrion", "label": "Mitochondrion", "synonyms": ["mitochondrion", "mitochondria"] },
+    { "id": "golgi", "label": "Golgi Apparatus", "synonyms": ["golgi", "golgi apparatus"] }
+  ],
+  "claimTemplates": [
+    "Plant cells include a cellulose-rich wall and membrane-bounded organelles.",
+    "Chloroplast and mitochondrial organelles are core to energy-related cellular pathways."
+  ],
+  "sources": [
+    {
+      "id": "khan-academy-plant-cell",
+      "title": "Plant cells",
+      "url": "https://www.khanacademy.org/science/biology/structure-of-a-cell/tour-of-organelles/a/plant-cells",
+      "publisher": "Khan Academy",
+      "year": 2025,
+      "type": "organization"
+    },
+    {
+      "id": "nih-bookshelf-cell",
+      "title": "Molecular Biology of the Cell (NCBI Bookshelf)",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK26893/",
+      "publisher": "NCBI",
+      "year": 2023,
+      "type": "organization"
+    }
+  ],
+  "validationChecklist": [
+    { "id": "required-parts", "name": "Required organelles are labeled", "required": true },
+    { "id": "claim-sources", "name": "Every claim has a source", "required": true },
+    { "id": "anchor-confidence", "name": "All callout anchors meet confidence threshold", "required": true }
+  ]
+}

@@ -1,4 +1,4 @@
-import { ensureSceneV12 } from "../engine/migrations";
+import { ensureSceneV14 } from "../engine/migrations";
 import type { SceneDocument } from "../engine/types";
 
 const DB_NAME = "vinci-scene-db";
@@ -63,7 +63,7 @@ export async function loadSceneFromDb(sceneId: string): Promise<SceneDocument | 
     if (!raw) {
       return null;
     }
-    return ensureSceneV12(JSON.parse(raw));
+    return ensureSceneV14(JSON.parse(raw));
   }
 
   const database = await openDb();
@@ -80,5 +80,5 @@ export async function loadSceneFromDb(sceneId: string): Promise<SceneDocument | 
   if (!record) {
     return null;
   }
-  return ensureSceneV12(JSON.parse(record.sceneJson));
+  return ensureSceneV14(JSON.parse(record.sceneJson));
 }

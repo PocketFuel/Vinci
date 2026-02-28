@@ -82,7 +82,8 @@ export type NodeType =
   | "petiole"
   | "filament"
   | "plant-cell"
-  | "cell-cluster";
+  | "cell-cluster"
+  | "image-panel";
 
 export type PrimitiveParams = Record<
   string,
@@ -134,6 +135,42 @@ export type AnimationSpec = {
   timeline?: string;
   targets?: { nodeId: string; part?: string }[];
   fallback?: { type: "css" | "smil"; recipe: AnimationType };
+};
+
+export type ScientificMode = "source-locked" | "guided-creative" | "fast-draft";
+
+export type ScientificClaim = {
+  id: string;
+  statement: string;
+  sourceIds: string[];
+  confidence: number;
+  status: "supported" | "needs-review" | "draft";
+};
+
+export type ReferenceSource = {
+  id: string;
+  title: string;
+  url: string;
+  publisher: string;
+  year: number;
+  type: "paper" | "textbook" | "government" | "organization" | "internal";
+};
+
+export type ValidationCheck = {
+  id: string;
+  name: string;
+  required: boolean;
+  passed: boolean;
+  notes: string;
+};
+
+export type ValidationReport = {
+  checklist: ValidationCheck[];
+  score: number;
+  ready: boolean;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  notes?: string;
 };
 
 export type AnnotationLabel = {
@@ -201,15 +238,24 @@ export type SceneRendering = {
   gridMode: "isometric";
 };
 
+export type SceneMetaBase = {
+  title: string;
+  concept: "energy-creation" | "energy-data-storage" | "saffron-growth";
+  description: string;
+  scientificNotes: string;
+};
+
+export type SceneMeta = SceneMetaBase & {
+  scientificMode: ScientificMode;
+  referencePackId: string;
+  claims: ScientificClaim[];
+  validation: ValidationReport;
+};
+
 export type SceneDocument = {
   id: string;
-  version: "1.2.0";
-  meta: {
-    title: string;
-    concept: "energy-creation" | "energy-data-storage" | "saffron-growth";
-    description: string;
-    scientificNotes: string;
-  };
+  version: "1.4.0";
+  meta: SceneMeta;
   camera: CameraSpec;
   responsive: ResponsiveConfig;
   composition: SceneComposition;
@@ -226,22 +272,29 @@ export type SceneCompositionV11 = Omit<
   "laneTemplate" | "overlapPolicy" | "laneGap" | "subjectNodeIds" | "baseNodeRoleFilter"
 >;
 
-export type SceneDocumentV11 = Omit<SceneDocument, "version" | "responsive" | "composition"> & {
+export type SceneDocumentV12 = Omit<SceneDocument, "version" | "meta"> & {
+  version: "1.2.0";
+  meta: SceneMetaBase;
+};
+
+export type SceneDocumentV11 = Omit<SceneDocument, "version" | "responsive" | "composition" | "meta"> & {
   version: "1.1.0";
+  meta: SceneMetaBase;
   composition: SceneCompositionV11;
 };
 
 export type LegacySceneDocument = Omit<
   SceneDocument,
-  "version" | "composition" | "rendering" | "responsive" | "annotations"
+  "version" | "composition" | "rendering" | "responsive" | "annotations" | "meta"
 > & {
   version: "1.0.0";
+  meta: SceneMetaBase;
   annotations: Omit<AnnotationLayer, "layout" | "labels"> & {
     labels: LegacyAnnotationLabel[];
   };
 };
 
-export type SceneDocumentInput = SceneDocument | SceneDocumentV11 | LegacySceneDocument;
+export type SceneDocumentInput = SceneDocument | SceneDocumentV12 | SceneDocumentV11 | LegacySceneDocument;
 
 export type PresetManifest = {
   presetId: string;
@@ -251,6 +304,7 @@ export type PresetManifest = {
   thumbnailRef?: string;
   tags: string[];
   scientificNotes: string;
+  referencePackId?: string;
 };
 
 export type ReferenceAsset = {

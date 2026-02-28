@@ -74,6 +74,7 @@ const nodeSchema = z.object({
     "filament",
     "plant-cell",
     "cell-cluster",
+    "image-panel",
   ]),
   layerId: z.string().min(1),
   transform3D: z.object({
@@ -131,7 +132,7 @@ const annotationLayoutV11Schema = z.object({
   leaderStyle: z.enum(["solid", "dashed"]),
 });
 
-const annotationLayoutV12Schema = z.object({
+const annotationLayoutV12PlusSchema = z.object({
   mode: z.enum(["outside-rails", "manual"]),
   rails: z.enum(["dual", "single"]),
   railPadding: z.number().min(8),
@@ -171,13 +172,13 @@ const annotationV11Schema = z.object({
   layout: annotationLayoutV11Schema,
 });
 
-const annotationV12Schema = z.object({
+const annotationV12PlusSchema = z.object({
   visible: z.boolean(),
   labels: z.array(annotationLabelV11PlusSchema),
   leaders: z.array(annotationLeaderSchema),
   equations: z.array(annotationEquationSchema),
   legend: z.array(z.string()),
-  layout: annotationLayoutV12Schema,
+  layout: annotationLayoutV12PlusSchema,
 });
 
 const compositionV11Schema = z.object({
@@ -188,7 +189,7 @@ const compositionV11Schema = z.object({
   templateId: z.string(),
 });
 
-const compositionV12Schema = compositionV11Schema.extend({
+const compositionV12PlusSchema = compositionV11Schema.extend({
   subjectNodeIds: z.array(z.string()).default([]),
   baseNodeRoleFilter: z.array(z.string().min(1)).default(["base", "substrate", "ground"]),
   laneTemplate: z.enum(["board-3lane", "board-radial", "organic-cross-section"]),
@@ -225,7 +226,7 @@ const animationV11Schema = z.object({
   easing: z.enum(["linear", "ease-in-out"]),
 });
 
-const animationV12Schema = animationV11Schema.extend({
+const animationV12PlusSchema = animationV11Schema.extend({
   engine: z.enum(["css", "gsap"]).optional(),
   timeline: z.string().optional(),
   targets: z
@@ -244,14 +245,47 @@ const animationV12Schema = animationV11Schema.extend({
     .optional(),
 });
 
-const baseSceneSchema = z.object({
+const sceneMetaBaseSchema = z.object({
+  title: z.string(),
+  concept: z.enum(["energy-creation", "energy-data-storage", "saffron-growth"]),
+  description: z.string(),
+  scientificNotes: z.string(),
+});
+
+const scientificClaimSchema = z.object({
   id: z.string().min(1),
-  meta: z.object({
-    title: z.string(),
-    concept: z.enum(["energy-creation", "energy-data-storage", "saffron-growth"]),
-    description: z.string(),
-    scientificNotes: z.string(),
-  }),
+  statement: z.string().min(1),
+  sourceIds: z.array(z.string().min(1)),
+  confidence: z.number().min(0).max(1),
+  status: z.enum(["supported", "needs-review", "draft"]),
+});
+
+const validationCheckSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  required: z.boolean(),
+  passed: z.boolean(),
+  notes: z.string(),
+});
+
+const validationReportSchema = z.object({
+  checklist: z.array(validationCheckSchema),
+  score: z.number().min(0).max(100),
+  ready: z.boolean(),
+  reviewedBy: z.string().optional(),
+  reviewedAt: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const sceneMetaV14Schema = sceneMetaBaseSchema.extend({
+  scientificMode: z.enum(["source-locked", "guided-creative", "fast-draft"]),
+  referencePackId: z.string().min(1),
+  claims: z.array(scientificClaimSchema),
+  validation: validationReportSchema,
+});
+
+const baseSceneCoreSchema = z.object({
+  id: z.string().min(1),
   camera: cameraSchema,
   tokens: tokenSetSchema,
   layers: z.array(
@@ -264,32 +298,46 @@ const baseSceneSchema = z.object({
   nodes: z.array(nodeSchema),
 });
 
-export const sceneDocumentV10Schema = baseSceneSchema.extend({
+export const sceneDocumentV10Schema = baseSceneCoreSchema.extend({
   version: z.literal("1.0.0"),
+  meta: sceneMetaBaseSchema,
   animations: z.array(animationV11Schema),
   annotations: annotationV10Schema,
 });
 
-export const sceneDocumentV11Schema = baseSceneSchema.extend({
+export const sceneDocumentV11Schema = baseSceneCoreSchema.extend({
   version: z.literal("1.1.0"),
+  meta: sceneMetaBaseSchema,
   composition: compositionV11Schema,
   rendering: renderingSchema,
   animations: z.array(animationV11Schema),
   annotations: annotationV11Schema,
 });
 
-export const sceneDocumentSchema = baseSceneSchema.extend({
+export const sceneDocumentV12Schema = baseSceneCoreSchema.extend({
   version: z.literal("1.2.0"),
+  meta: sceneMetaBaseSchema,
   responsive: responsiveSchema,
-  composition: compositionV12Schema,
+  composition: compositionV12PlusSchema,
   rendering: renderingSchema,
-  animations: z.array(animationV12Schema),
-  annotations: annotationV12Schema,
+  animations: z.array(animationV12PlusSchema),
+  annotations: annotationV12PlusSchema,
+});
+
+export const sceneDocumentSchema = baseSceneCoreSchema.extend({
+  version: z.literal("1.4.0"),
+  meta: sceneMetaV14Schema,
+  responsive: responsiveSchema,
+  composition: compositionV12PlusSchema,
+  rendering: renderingSchema,
+  animations: z.array(animationV12PlusSchema),
+  annotations: annotationV12PlusSchema,
 });
 
 export const sceneDocumentInputSchema = z.union([
   sceneDocumentV10Schema,
   sceneDocumentV11Schema,
+  sceneDocumentV12Schema,
   sceneDocumentSchema,
 ]);
 
@@ -312,3 +360,6 @@ export const referenceAssetSchema = z.object({
 });
 
 export const tokenSetSchemaExport = tokenSetSchema;
+export const sceneMetaBaseSchemaExport = sceneMetaBaseSchema;
+export const scientificClaimSchemaExport = scientificClaimSchema;
+export const validationReportSchemaExport = validationReportSchema;

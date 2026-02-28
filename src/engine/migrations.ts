@@ -1,4 +1,9 @@
-import { sceneDocumentInputSchema, sceneDocumentSchema, sceneDocumentV11Schema } from "./schema";
+import {
+  sceneDocumentInputSchema,
+  sceneDocumentSchema,
+  sceneDocumentV11Schema,
+  sceneDocumentV12Schema,
+} from "./schema";
 import { nearestNodeIdByWorldPoint } from "./scene";
 import type {
   AnnotationLayer,
@@ -6,26 +11,42 @@ import type {
   SceneDocument,
   SceneDocumentInput,
   SceneDocumentV11,
+  SceneDocumentV12,
+  SceneMeta,
+  SceneMetaBase,
+  ScientificClaim,
+  ValidationCheck,
+  ValidationReport,
 } from "./types";
 
-export function ensureSceneV12(input: unknown): SceneDocument {
+export function ensureSceneV14(input: unknown): SceneDocument {
   const parsed = sceneDocumentInputSchema.parse(input) as SceneDocumentInput;
+
+  if (parsed.version === "1.4.0") {
+    const repaired = repairV14(parsed);
+    return sceneDocumentSchema.parse(repaired);
+  }
 
   if (parsed.version === "1.2.0") {
     const repaired = repairV12(parsed);
-    return sceneDocumentSchema.parse(repaired);
+    const migrated = migrateScene_1_2_to_1_4(repaired);
+    return sceneDocumentSchema.parse(migrated);
   }
 
   if (parsed.version === "1.1.0") {
     const repaired = repairV11(parsed);
-    const migrated = migrateScene_1_1_to_1_2(repaired);
-    return sceneDocumentSchema.parse(migrated);
+    const migrated12 = migrateScene_1_1_to_1_2(repaired);
+    const migrated14 = migrateScene_1_2_to_1_4(migrated12);
+    return sceneDocumentSchema.parse(migrated14);
   }
 
   const migrated11 = migrateScene_1_0_to_1_1(parsed);
   const migrated12 = migrateScene_1_1_to_1_2(migrated11);
-  return sceneDocumentSchema.parse(migrated12);
+  const migrated14 = migrateScene_1_2_to_1_4(migrated12);
+  return sceneDocumentSchema.parse(migrated14);
 }
+
+export const ensureSceneV12 = ensureSceneV14;
 
 export function migrateScene_1_0_to_1_1(scene: LegacySceneDocument): SceneDocumentV11 {
   const labels = scene.annotations.labels.map((label) => ({
@@ -63,7 +84,7 @@ export function migrateScene_1_0_to_1_1(scene: LegacySceneDocument): SceneDocume
   };
 }
 
-export function migrateScene_1_1_to_1_2(scene: SceneDocumentV11): SceneDocument {
+export function migrateScene_1_1_to_1_2(scene: SceneDocumentV11): SceneDocumentV12 {
   const labels = scene.annotations.labels.map((label) => ({
     ...label,
     targetNodeId: label.targetNodeId ?? nearestNodeIdByWorldPoint(scene.nodes, label.at) ?? scene.nodes[0]?.id ?? "",
@@ -83,6 +104,54 @@ export function migrateScene_1_1_to_1_2(scene: SceneDocumentV11): SceneDocument 
       overlapPolicy: "avoid",
       laneGap: 1.25,
     },
+    nodes: scene.nodes.map((node) => ({
+      ...node,
+      processRole: node.processRole ?? inferRoleFromNodeType(node.type),
+      processGroup: node.processGroup ?? "default",
+      ports: node.ports ?? defaultPortsForNode(node),
+    })),
+    animations: scene.animations.map((animation) => ({
+      ...animation,
+      type: normalizeAnimationType(animation.type),
+      engine: animation.engine ?? "css",
+      timeline: animation.timeline ?? defaultTimelineForType(animation.type),
+      targets:
+        animation.targets ??
+        animation.targetNodeIds.map((nodeId) => ({
+          nodeId,
+        })),
+      fallback:
+        animation.fallback ??
+        ({
+          type: "css",
+          recipe: normalizeAnimationType(animation.type),
+        } as const),
+    })),
+    annotations: {
+      ...scene.annotations,
+      labels,
+      layout: {
+        ...defaultAnnotationLayout(),
+        ...scene.annotations.layout,
+      },
+    },
+  };
+}
+
+export function migrateScene_1_2_to_1_4(scene: SceneDocumentV12): SceneDocument {
+  const labels = scene.annotations.labels.map((label) => ({
+    ...label,
+    targetNodeId: label.targetNodeId ?? nearestNodeIdByWorldPoint(scene.nodes, label.at) ?? scene.nodes[0]?.id ?? "",
+    anchorBias: label.anchorBias ?? "auto",
+    priority: label.priority ?? 0,
+  }));
+
+  const nextMeta = enrichMeta(scene.meta, scene.nodes.map((node) => node.id));
+
+  return {
+    ...scene,
+    version: "1.4.0",
+    meta: nextMeta,
     nodes: scene.nodes.map((node) => ({
       ...node,
       processRole: node.processRole ?? inferRoleFromNodeType(node.type),
@@ -137,7 +206,44 @@ function repairV11(scene: SceneDocumentV11): SceneDocumentV11 {
   return sceneDocumentV11Schema.parse(repaired);
 }
 
-function repairV12(scene: SceneDocument): SceneDocument {
+function repairV12(scene: SceneDocumentV12): SceneDocumentV12 {
+  const labels = scene.annotations.labels.map((label) => ({
+    ...label,
+    targetNodeId: label.targetNodeId ?? nearestNodeIdByWorldPoint(scene.nodes, label.at) ?? scene.nodes[0]?.id ?? "",
+    anchorBias: label.anchorBias ?? "auto",
+    priority: label.priority ?? 0,
+  }));
+
+  const repaired: SceneDocumentV12 = {
+    ...scene,
+    composition: {
+      ...scene.composition,
+      subjectNodeIds:
+        scene.composition.subjectNodeIds && scene.composition.subjectNodeIds.length > 0
+          ? scene.composition.subjectNodeIds
+          : defaultSubjectNodeIds(scene.nodes, scene.composition.focalNodeIds),
+      baseNodeRoleFilter:
+        scene.composition.baseNodeRoleFilter && scene.composition.baseNodeRoleFilter.length > 0
+          ? scene.composition.baseNodeRoleFilter
+          : defaultBaseNodeRoleFilter(),
+      laneTemplate: scene.composition.laneTemplate ?? inferLaneTemplate(scene.meta.concept),
+      overlapPolicy: scene.composition.overlapPolicy ?? "avoid",
+      laneGap: scene.composition.laneGap ?? 1.25,
+    },
+    annotations: {
+      ...scene.annotations,
+      labels,
+      layout: {
+        ...defaultAnnotationLayout(),
+        ...scene.annotations.layout,
+      },
+    },
+  };
+
+  return sceneDocumentV12Schema.parse(repaired);
+}
+
+function repairV14(scene: SceneDocument): SceneDocument {
   const labels = scene.annotations.labels.map((label) => ({
     ...label,
     targetNodeId: label.targetNodeId ?? nearestNodeIdByWorldPoint(scene.nodes, label.at) ?? scene.nodes[0]?.id ?? "",
@@ -154,8 +260,11 @@ function repairV12(scene: SceneDocument): SceneDocument {
     },
   };
 
+  const meta = repairMeta(scene.meta, scene.nodes.map((node) => node.id));
+
   return {
     ...scene,
+    meta,
     responsive: scene.responsive ?? defaultResponsiveConfig(),
     composition: {
       ...scene.composition,
@@ -272,6 +381,9 @@ function inferRoleFromNodeType(nodeType: SceneDocument["nodes"][number]["type"])
   ) {
     return "organic";
   }
+  if (nodeType === "image-panel") {
+    return "reference";
+  }
   return "output";
 }
 
@@ -301,6 +413,16 @@ function defaultPortsForNode(node: SceneDocument["nodes"][number]): NonNullable<
     return [
       { id: "in", local: { x: -x, y: 0, z: 0 }, direction: "in" },
       { id: "out", local: { x: x, y: 0, z: 0 }, direction: "out" },
+    ];
+  }
+
+  if (node.type === "image-panel") {
+    return [
+      { id: "left", local: { x: -x, y: 0, z: 0 }, direction: "bidirectional" },
+      { id: "right", local: { x: x, y: 0, z: 0 }, direction: "bidirectional" },
+      { id: "top", local: { x: 0, y: -y, z: 0 }, direction: "out" },
+      { id: "bottom", local: { x: 0, y: y, z: 0 }, direction: "in" },
+      { id: "center", local: { x: 0, y: 0, z: 0 }, direction: "bidirectional" },
     ];
   }
 
@@ -354,4 +476,108 @@ function normalizeAnimationType(type: string): SceneDocument["animations"][numbe
     return type as SceneDocument["animations"][number]["type"];
   }
   return "pulse";
+}
+
+function inferReferencePackId(meta: SceneMetaBase): string {
+  if (meta.concept === "saffron-growth") {
+    return "saffron-anatomy";
+  }
+  if (meta.concept === "energy-data-storage") {
+    return "plant-cell";
+  }
+  return "plasmonic-energy";
+}
+
+function seedClaims(meta: SceneMetaBase, nodeIds: string[]): ScientificClaim[] {
+  return [
+    {
+      id: `${meta.concept}-claim-1`,
+      statement: meta.scientificNotes || meta.description,
+      sourceIds: [],
+      confidence: 0.55,
+      status: "draft",
+    },
+    {
+      id: `${meta.concept}-claim-2`,
+      statement: `Scene ${meta.title} is represented with ${nodeIds.length} structural nodes.`,
+      sourceIds: [],
+      confidence: 0.4,
+      status: "draft",
+    },
+  ];
+}
+
+function seedValidation(checks: ValidationCheck[]): ValidationReport {
+  const passedRequired = checks.filter((check) => check.required && check.passed).length;
+  const requiredTotal = Math.max(1, checks.filter((check) => check.required).length);
+  const score = Math.round((passedRequired / requiredTotal) * 100);
+  return {
+    checklist: checks,
+    score,
+    ready: false,
+    reviewedBy: "system-migration",
+    reviewedAt: new Date().toISOString(),
+    notes: "Migrated to v1.4.0; requires source-backed scientific review.",
+  };
+}
+
+function buildDefaultChecks(meta: SceneMetaBase): ValidationCheck[] {
+  return [
+    {
+      id: "required-parts-present",
+      name: "Required parts present",
+      required: true,
+      passed: false,
+      notes: `Verify anatomy/process parts for ${meta.concept}.`,
+    },
+    {
+      id: "claims-backed",
+      name: "Claims backed by at least one source",
+      required: true,
+      passed: false,
+      notes: "Attach source IDs to each scientific claim.",
+    },
+    {
+      id: "label-mapping",
+      name: "Every label maps to a required part",
+      required: true,
+      passed: false,
+      notes: "Check callout-target mapping before mark-ready.",
+    },
+  ];
+}
+
+function enrichMeta(meta: SceneMetaBase, nodeIds: string[]): SceneMeta {
+  return {
+    ...meta,
+    scientificMode: "source-locked",
+    referencePackId: inferReferencePackId(meta),
+    claims: seedClaims(meta, nodeIds),
+    validation: seedValidation(buildDefaultChecks(meta)),
+  };
+}
+
+function repairMeta(meta: SceneMeta, nodeIds: string[]): SceneMeta {
+  const defaulted = enrichMeta(meta, nodeIds);
+  return {
+    ...defaulted,
+    ...meta,
+    claims:
+      meta.claims?.map((claim) => ({
+        ...claim,
+        confidence: clamp(claim.confidence ?? 0.4, 0, 1),
+        sourceIds: claim.sourceIds ?? [],
+        status: claim.status ?? "draft",
+      })) ?? defaulted.claims,
+    validation: {
+      ...defaulted.validation,
+      ...meta.validation,
+      score: clamp(meta.validation?.score ?? defaulted.validation.score, 0, 100),
+      checklist: meta.validation?.checklist ?? defaulted.validation.checklist,
+    },
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }

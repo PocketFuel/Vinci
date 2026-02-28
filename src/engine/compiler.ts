@@ -118,11 +118,36 @@ export function compileSceneToSvg(scene: SceneDocument, options: CompileOptions 
   const topHatchOpacity = (0.06 + scene.tokens.hatchDensity * 0.28).toFixed(3);
   const leftHatchOpacity = (0.08 + scene.tokens.hatchDensity * 0.3).toFixed(3);
   const rightHatchOpacity = (0.07 + scene.tokens.hatchDensity * 0.26).toFixed(3);
+  const metadataPayload = {
+    sceneId: scene.id,
+    version: scene.version,
+    title: scene.meta.title,
+    concept: scene.meta.concept,
+    scientificMode: scene.meta.scientificMode,
+    referencePackId: scene.meta.referencePackId,
+    validation: {
+      score: scene.meta.validation.score,
+      ready: scene.meta.validation.ready,
+      reviewedAt: scene.meta.validation.reviewedAt,
+      checklist: scene.meta.validation.checklist.map((check) => ({
+        id: check.id,
+        passed: check.passed,
+        required: check.required,
+      })),
+    },
+    claims: scene.meta.claims.map((claim) => ({
+      id: claim.id,
+      sourceIds: claim.sourceIds,
+      status: claim.status,
+      confidence: claim.confidence,
+    })),
+  };
 
   return `
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeXml(
     scene.meta.title
   )}">
+  <metadata id="scene-metadata">${escapeXml(JSON.stringify(metadataPayload))}</metadata>
   <defs>
     <pattern id="face-hatch-top" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(30)">
       <line x1="0" y1="0" x2="0" y2="10" stroke="${normalizeHex(scene.tokens.inkSecondary)}" stroke-opacity="${topHatchOpacity}" stroke-width="0.8"/>

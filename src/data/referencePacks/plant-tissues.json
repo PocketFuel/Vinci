@@ -1,0 +1,40 @@
+{
+  "id": "plant-tissues",
+  "title": "Plant Tissue Comparison",
+  "domain": "botany",
+  "concept": "saffron-growth",
+  "requiredParts": [
+    { "id": "parenchyma", "label": "Parenchyma", "synonyms": ["parenchyma"] },
+    { "id": "collenchyma", "label": "Collenchyma", "synonyms": ["collenchyma"] },
+    { "id": "sclerenchyma", "label": "Sclerenchyma", "synonyms": ["sclerenchyma"] },
+    { "id": "cell-wall", "label": "Cell Wall", "synonyms": ["cell wall", "primary wall", "secondary wall"] },
+    { "id": "lumen", "label": "Lumen", "synonyms": ["lumen"] }
+  ],
+  "claimTemplates": [
+    "Parenchyma cells typically have thin primary walls and variable intercellular spaces.",
+    "Collenchyma and sclerenchyma provide mechanical support with increasing wall thickness."
+  ],
+  "sources": [
+    {
+      "id": "britannica-ground-tissue",
+      "title": "Ground tissue system",
+      "url": "https://www.britannica.com/science/ground-tissue-system",
+      "publisher": "Encyclopaedia Britannica",
+      "year": 2024,
+      "type": "organization"
+    },
+    {
+      "id": "openstax-plant-tissues",
+      "title": "Plant Form and Physiology: Plant Tissues",
+      "url": "https://openstax.org/books/biology-2e/pages/30-3-stems",
+      "publisher": "OpenStax",
+      "year": 2024,
+      "type": "organization"
+    }
+  ],
+  "validationChecklist": [
+    { "id": "required-parts", "name": "Required tissue labels are present", "required": true },
+    { "id": "claim-sources", "name": "Every claim has a source", "required": true },
+    { "id": "anchor-confidence", "name": "All callout anchors meet confidence threshold", "required": true }
+  ]
+}

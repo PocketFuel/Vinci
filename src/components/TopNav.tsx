@@ -31,7 +31,7 @@ export function TopNav({ onOpenShortcuts }: TopNavProps) {
                 <h1 className="font-display text-3xl leading-none">Vinci</h1>
                 <Badge className="gap-1 border-primary/30 bg-primary/10 text-primary">
                   <Sparkles className="h-3 w-3" />
-                  v1.2
+                  v1.4
                 </Badge>
               </div>
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Scientific Isometric SVG Builder</p>
