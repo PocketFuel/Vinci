@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
+import { Palette, PenTool, SlidersHorizontal } from "lucide-react";
 import { SceneViewport } from "../components/SceneViewport";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Separator } from "../components/ui/separator";
+import { Slider } from "../components/ui/slider";
 import { saveFile } from "../engine/exporters";
 import { getSceneByPresetId } from "../data/presets";
 import { vinciPaperWireframe } from "../data/tokens";
@@ -31,116 +38,119 @@ export function TokensPage() {
     saveFile("vinci-token-set.json", JSON.stringify(tokens, null, 2), "application/json");
   }
 
-  function colorValue(value: string) {
-    return value.toUpperCase();
-  }
-
   return (
-    <main className="page tokens-page">
-      <section className="panel token-panel">
-        <h2>Token Editor</h2>
-        <p className="muted">
-          Global style profile: <strong>vinci-paper-wireframe</strong>. Update once, restyle every scene.
-        </p>
+    <main className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
+      <Card className="min-h-0 overflow-hidden">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-4 w-4 text-primary" />
+            Token Editor
+          </CardTitle>
+          <CardDescription>Global paper-wireframe profile. Update once and every preset restyles instantly.</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[calc(100%-92px)] overflow-y-auto px-4 pb-4 pt-0">
+          <div className="grid gap-6">
+            <section className="grid gap-3">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <PenTool className="h-4 w-4 text-primary" />
+                Paper + Ink
+              </h3>
+              <ColorField label="Background Paper" value={tokens.bgPaper} onChange={(value) => updateColor("bgPaper", value)} />
+              <ColorField label="Ink Primary" value={tokens.inkPrimary} onChange={(value) => updateColor("inkPrimary", value)} />
+              <ColorField label="Ink Secondary" value={tokens.inkSecondary} onChange={(value) => updateColor("inkSecondary", value)} />
+            </section>
 
-        <div className="token-grid">
-          <div className="sh-section">
-            <h3 className="sh-section-title">Paper + Ink</h3>
-            <label className="sh-field">
-              <span className="sh-label">Background Paper</span>
-              <div className="sh-color-row">
-                <input className="sh-color" type="color" value={tokens.bgPaper} onChange={(e) => updateColor("bgPaper", e.target.value)} />
-                <span className="sh-color-value">{colorValue(tokens.bgPaper)}</span>
+            <Separator />
+
+            <section className="grid gap-3">
+              <h3 className="text-sm font-semibold">Face Fill System</h3>
+              <ColorField label="Fill Top" value={tokens.fillTop} onChange={(value) => updateColor("fillTop", value)} />
+              <ColorField label="Fill Left" value={tokens.fillLeft} onChange={(value) => updateColor("fillLeft", value)} />
+              <ColorField label="Fill Right" value={tokens.fillRight} onChange={(value) => updateColor("fillRight", value)} />
+            </section>
+
+            <Separator />
+
+            <section className="grid gap-4">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <SlidersHorizontal className="h-4 w-4 text-primary" />
+                Line + Hatch
+              </h3>
+              <div className="grid gap-2">
+                <Label>Line Width ({tokens.lineWidth.toFixed(2)})</Label>
+                <Slider
+                  value={[tokens.lineWidth]}
+                  min={0.8}
+                  max={3}
+                  step={0.05}
+                  onValueChange={(value) => updateNumber("lineWidth", value[0] ?? tokens.lineWidth)}
+                />
               </div>
-            </label>
-            <label className="sh-field">
-              <span className="sh-label">Ink Primary</span>
-              <div className="sh-color-row">
-                <input className="sh-color" type="color" value={tokens.inkPrimary} onChange={(e) => updateColor("inkPrimary", e.target.value)} />
-                <span className="sh-color-value">{colorValue(tokens.inkPrimary)}</span>
+              <div className="grid gap-2">
+                <Label>Hatch Density ({tokens.hatchDensity.toFixed(2)})</Label>
+                <Slider
+                  value={[tokens.hatchDensity]}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onValueChange={(value) => updateNumber("hatchDensity", value[0] ?? tokens.hatchDensity)}
+                />
               </div>
-            </label>
-            <label className="sh-field">
-              <span className="sh-label">Ink Secondary</span>
-              <div className="sh-color-row">
-                <input className="sh-color" type="color" value={tokens.inkSecondary} onChange={(e) => updateColor("inkSecondary", e.target.value)} />
-                <span className="sh-color-value">{colorValue(tokens.inkSecondary)}</span>
-              </div>
-            </label>
+            </section>
+
+            <Button onClick={exportTokenSet}>Export Token Profile JSON</Button>
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="sh-section">
-            <h3 className="sh-section-title">Face Fill System</h3>
-            <label className="sh-field">
-              <span className="sh-label">Fill Top</span>
-              <div className="sh-color-row">
-                <input className="sh-color" type="color" value={tokens.fillTop} onChange={(e) => updateColor("fillTop", e.target.value)} />
-                <span className="sh-color-value">{colorValue(tokens.fillTop)}</span>
-              </div>
-            </label>
-            <label className="sh-field">
-              <span className="sh-label">Fill Left</span>
-              <div className="sh-color-row">
-                <input className="sh-color" type="color" value={tokens.fillLeft} onChange={(e) => updateColor("fillLeft", e.target.value)} />
-                <span className="sh-color-value">{colorValue(tokens.fillLeft)}</span>
-              </div>
-            </label>
-            <label className="sh-field">
-              <span className="sh-label">Fill Right</span>
-              <div className="sh-color-row">
-                <input className="sh-color" type="color" value={tokens.fillRight} onChange={(e) => updateColor("fillRight", e.target.value)} />
-                <span className="sh-color-value">{colorValue(tokens.fillRight)}</span>
-              </div>
-            </label>
-          </div>
-
-          <div className="sh-section">
-            <h3 className="sh-section-title">Line + Hatch</h3>
-            <label className="sh-field">
-              <span className="sh-label">Line Width ({tokens.lineWidth.toFixed(2)})</span>
-              <input
-                className="sh-range"
-                type="range"
-                min="0.8"
-                max="3.0"
-                step="0.05"
-                value={tokens.lineWidth}
-                onChange={(e) => updateNumber("lineWidth", Number(e.target.value))}
-              />
-            </label>
-            <label className="sh-field">
-              <span className="sh-label">Hatch Density ({tokens.hatchDensity.toFixed(2)})</span>
-              <input
-                className="sh-range"
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={tokens.hatchDensity}
-                onChange={(e) => updateNumber("hatchDensity", Number(e.target.value))}
-              />
-            </label>
-          </div>
-        </div>
-
-        <button className="sh-button" onClick={exportTokenSet}>
-          Export Token Profile JSON
-        </button>
-      </section>
-
-      <section className="panel token-preview-panel">
-        <h3>Live Token Preview</h3>
-        <SceneViewport
-          scene={previewScene}
-          width={1100}
-          height={620}
-          compileOptions={{
-            includeAnnotations: false,
-            fitToFrame: true,
-            showGrid: false,
-          }}
-        />
-      </section>
+      <Card className="min-h-0 overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle>Live Token Preview</CardTitle>
+          <CardDescription>Responsive SVG preview with annotation rails and process composition.</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[calc(100%-88px)] p-3">
+          <SceneViewport
+            scene={previewScene}
+            width={1280}
+            height={720}
+            compileOptions={{
+              includeAnnotations: false,
+              fitToFrame: true,
+              showGrid: false,
+            }}
+          />
+        </CardContent>
+      </Card>
     </main>
+  );
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="grid gap-2">
+      <Label>{label}</Label>
+      <div className="grid grid-cols-[52px_minmax(0,1fr)] gap-2">
+        <Input
+          className="h-11 cursor-pointer rounded-xl p-1"
+          type="color"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          aria-label={label}
+        />
+        <Input
+          className="h-11 rounded-xl font-mono text-sm uppercase tracking-wide"
+          value={value.toUpperCase()}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </div>
+    </div>
   );
 }

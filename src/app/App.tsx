@@ -26,9 +26,9 @@ export function App() {
   }, []);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell flex h-screen flex-col overflow-hidden">
       <TopNav onOpenShortcuts={() => setShortcutsOpen(true)} />
-      <div className="app-content">
+      <div className="min-h-0 flex-1 px-5 pb-5 pt-3">
         <Routes>
           <Route path="/" element={<BuilderPage />} />
           <Route path="/presets" element={<PresetsPage />} />

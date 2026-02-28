@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { compileSceneToSvg, type CompileOptions } from "../engine/compiler";
+import { mountGsapRuntime } from "../engine/animations";
 import type { SceneDocument } from "../engine/types";
 
 type DragMode = "pan" | "node";
@@ -17,6 +18,8 @@ type SceneViewportProps = {
   compileOptions?: Omit<CompileOptions, "width" | "height">;
   width?: number;
   height?: number;
+  selectedNodeId?: string | null;
+  onSelectNode?: (nodeId: string | null) => void;
   onPanCanvas?: (dx: number, dy: number) => void;
   onDragNode?: (payload: NodeDragPayload) => void;
 };
@@ -26,24 +29,77 @@ export function SceneViewport({
   compileOptions,
   width = 1200,
   height = 760,
+  selectedNodeId,
+  onSelectNode,
   onPanCanvas,
   onDragNode,
 }: SceneViewportProps) {
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const [renderSize, setRenderSize] = useState({ width, height });
+
+  useEffect(() => {
+    const element = viewportRef.current;
+    if (!element) {
+      return;
+    }
+
+    const ratio = width / height;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+      const availableWidth = entry.contentRect.width;
+      const availableHeight = entry.contentRect.height;
+      const fittedHeight = availableWidth / ratio;
+      const fittedWidth = Math.min(availableWidth, availableHeight * ratio);
+      const finalWidth = Math.max(480, Math.round(fittedWidth));
+      const finalHeight = Math.max(270, Math.round(Math.min(fittedHeight, availableHeight)));
+      setRenderSize({
+        width: finalWidth,
+        height: finalHeight,
+      });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [width, height]);
+
   const svg = useMemo(
     () =>
       compileSceneToSvg(scene, {
-        width,
-        height,
+        width: renderSize.width,
+        height: renderSize.height,
         ...compileOptions,
       }),
-    [scene, compileOptions, width, height]
+    [scene, compileOptions, renderSize.width, renderSize.height]
   );
 
-  const viewportRef = useRef<HTMLDivElement | null>(null);
   const [dragMode, setDragMode] = useState<DragMode | null>(null);
   const [dragNodeId, setDragNodeId] = useState<string | null>(null);
   const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(null);
   const [spacePressed, setSpacePressed] = useState(false);
+
+  useEffect(() => {
+    const host = viewportRef.current;
+    if (!host) {
+      return;
+    }
+    const cleanup = mountGsapRuntime(scene, host);
+    return cleanup;
+  }, [scene, svg]);
+
+  useEffect(() => {
+    const host = viewportRef.current;
+    if (!host) {
+      return;
+    }
+    host.querySelectorAll(".node-selected").forEach((element) => element.classList.remove("node-selected"));
+    if (!selectedNodeId) {
+      return;
+    }
+    const selected = host.querySelector(`#node-${selectedNodeId}`);
+    selected?.classList.add("node-selected");
+  }, [selectedNodeId, svg]);
 
   useEffect(() => {
     function onWindowKeyDown(event: KeyboardEvent) {
@@ -85,12 +141,15 @@ export function SceneViewport({
     if (wantsPan) {
       setDragMode("pan");
       setDragNodeId(null);
+      onSelectNode?.(null);
     } else if (nodeId) {
       setDragMode("node");
       setDragNodeId(nodeId);
+      onSelectNode?.(nodeId);
     } else {
       setDragMode(null);
       setDragNodeId(null);
+      onSelectNode?.(null);
       return;
     }
 

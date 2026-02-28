@@ -26,4 +26,19 @@ describe("SVG compiler", () => {
     const svg = compileSceneToSvg(scene, { width: 900, height: 540, showGrid: true, fitToFrame: true });
     expect(svg).toContain("layer-grid");
   });
+
+  it("supports card preview mode with subject-fit defaults", () => {
+    const scene = getSceneByPresetId("sf-03-bloom-anatomy-harvest-view");
+    const svg = compileSceneToSvg(scene, {
+      width: 960,
+      height: 540,
+      includeAnnotations: false,
+      fitToFrame: true,
+      previewMode: "card",
+      fitTarget: "subject",
+      subjectPadding: 36,
+    });
+    expect(svg).toContain("viewBox=\"0 0 960 540\"");
+    expect(svg).toContain("id=\"layer-main\"");
+  });
 });

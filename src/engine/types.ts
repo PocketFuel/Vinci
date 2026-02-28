@@ -21,6 +21,18 @@ export type CameraSpec = {
   manualPan?: { x: number; y: number };
 };
 
+export type ResponsiveBreakpoint = {
+  id: "desktop" | "tablet" | "mobile";
+  width: number;
+  cameraPreset: CameraPresetId;
+  annotationMode: "outside-rails" | "compact";
+};
+
+export type ResponsiveConfig = {
+  mode: "adaptive";
+  breakpoints: ResponsiveBreakpoint[];
+};
+
 export type TokenSet = {
   id: string;
   name: string;
@@ -44,6 +56,11 @@ export type NodeType =
   | "atom"
   | "bond"
   | "box"
+  | "prism"
+  | "cone"
+  | "capsule"
+  | "ring"
+  | "dome"
   | "plate"
   | "cylinder"
   | "disk-array"
@@ -53,9 +70,24 @@ export type NodeType =
   | "petal"
   | "root"
   | "rack"
-  | "label-anchor";
+  | "label-anchor"
+  | "pcb-trace"
+  | "chip"
+  | "chiplet"
+  | "bus"
+  | "manifold"
+  | "tank-horizontal"
+  | "electrode-stack"
+  | "wavefront"
+  | "petiole"
+  | "filament"
+  | "plant-cell"
+  | "cell-cluster";
 
-export type PrimitiveParams = Record<string, number | string | boolean | Vector3 | Vector3[]>;
+export type PrimitiveParams = Record<
+  string,
+  number | string | boolean | Vector3 | Vector3[] | Record<string, string | number | boolean> | Array<Record<string, string>>
+>;
 
 export type Node = {
   id: string;
@@ -70,9 +102,25 @@ export type Node = {
   params: PrimitiveParams;
   children: string[];
   renderPriority?: number;
+  processRole?: string;
+  processGroup?: string;
+  ports?: {
+    id: string;
+    local: Vector3;
+    direction: "in" | "out" | "bidirectional";
+  }[];
 };
 
-export type AnimationType = "pulse" | "flow" | "orbit" | "growth";
+export type AnimationType =
+  | "pulse"
+  | "flow"
+  | "orbit"
+  | "growth"
+  | "energy-flow"
+  | "charge-cycle"
+  | "reaction-split"
+  | "network-pulse"
+  | "growth-wave";
 
 export type AnimationSpec = {
   id: string;
@@ -82,6 +130,10 @@ export type AnimationSpec = {
   repeat: "indefinite" | number;
   phase: number;
   easing: "linear" | "ease-in-out";
+  engine?: "css" | "gsap";
+  timeline?: string;
+  targets?: { nodeId: string; part?: string }[];
+  fallback?: { type: "css" | "smil"; recipe: AnimationType };
 };
 
 export type AnnotationLabel = {
@@ -89,6 +141,7 @@ export type AnnotationLabel = {
   text: string;
   at: Vector3;
   targetNodeId: string;
+  targetPortId?: string;
   anchorBias?: "left" | "right" | "auto";
   priority?: number;
 };
@@ -111,8 +164,8 @@ export type AnnotationEquation = {
 };
 
 export type AnnotationLayout = {
-  mode: "outside-rails";
-  rails: "dual";
+  mode: "outside-rails" | "manual";
+  rails: "dual" | "single";
   railPadding: number;
   minLabelGap: number;
   maxLabelWidth: number;
@@ -133,7 +186,12 @@ export type SceneComposition = {
   framePadding: number;
   minOccupancy: number;
   focalNodeIds: string[];
+  subjectNodeIds: string[];
+  baseNodeRoleFilter: string[];
   templateId: string;
+  laneTemplate: "board-3lane" | "board-radial" | "organic-cross-section";
+  overlapPolicy: "avoid" | "allow";
+  laneGap: number;
 };
 
 export type SceneRendering = {
@@ -145,7 +203,7 @@ export type SceneRendering = {
 
 export type SceneDocument = {
   id: string;
-  version: "1.1.0";
+  version: "1.2.0";
   meta: {
     title: string;
     concept: "energy-creation" | "energy-data-storage" | "saffron-growth";
@@ -153,6 +211,7 @@ export type SceneDocument = {
     scientificNotes: string;
   };
   camera: CameraSpec;
+  responsive: ResponsiveConfig;
   composition: SceneComposition;
   rendering: SceneRendering;
   tokens: TokenSet;
@@ -162,14 +221,27 @@ export type SceneDocument = {
   annotations: AnnotationLayer;
 };
 
-export type LegacySceneDocument = Omit<SceneDocument, "version" | "composition" | "rendering" | "annotations"> & {
+export type SceneCompositionV11 = Omit<
+  SceneComposition,
+  "laneTemplate" | "overlapPolicy" | "laneGap" | "subjectNodeIds" | "baseNodeRoleFilter"
+>;
+
+export type SceneDocumentV11 = Omit<SceneDocument, "version" | "responsive" | "composition"> & {
+  version: "1.1.0";
+  composition: SceneCompositionV11;
+};
+
+export type LegacySceneDocument = Omit<
+  SceneDocument,
+  "version" | "composition" | "rendering" | "responsive" | "annotations"
+> & {
   version: "1.0.0";
   annotations: Omit<AnnotationLayer, "layout" | "labels"> & {
     labels: LegacyAnnotationLabel[];
   };
 };
 
-export type SceneDocumentInput = SceneDocument | LegacySceneDocument;
+export type SceneDocumentInput = SceneDocument | SceneDocumentV11 | LegacySceneDocument;
 
 export type PresetManifest = {
   presetId: string;

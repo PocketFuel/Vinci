@@ -1,6 +1,7 @@
 import type { AnnotationLabel, AnnotationLayer, Bounds2D, CameraSpec, Node, TokenSet } from "./types";
 import { applyNodeTransform, normalizeHex, projectPoint } from "./projection";
 import { sampleNodeWorldPoints } from "./primitives";
+import { getNodePortWorldPosition } from "./scene";
 
 type LayoutMode = "manual" | "auto-outside";
 
@@ -8,12 +9,15 @@ type Placement = {
   id: string;
   targetX: number;
   targetY: number;
+  breakX: number;
+  breakY: number;
   x: number;
   top: number;
   side: "left" | "right";
   lines: string[];
   width: number;
   height: number;
+  railX: number;
 };
 
 type AnnotationRenderInput = {
@@ -74,11 +78,10 @@ export function renderAnnotations(input: AnnotationRenderInput): string {
 
   const leaders = placements
     .map((placement) => {
-      const elbowX = placement.side === "left" ? mainBounds.minX - annotations.layout.railPadding * 0.55 : mainBounds.maxX + annotations.layout.railPadding * 0.55;
       const entryX = placement.side === "left" ? placement.x + placement.width + 6 : placement.x - 6;
       const entryY = placement.top + 12;
-
-      return `<polyline points="${placement.targetX},${placement.targetY} ${elbowX},${placement.targetY} ${entryX},${entryY}" fill="none" stroke="${ink}" stroke-width="1.2"${dash}/>`;
+      const polylinePoints = routeLeaderPoints(placement, entryX, entryY);
+      return `<polyline points="${polylinePoints}" fill="none" stroke="${ink}" stroke-width="1.2"${dash}/>`;
     })
     .join("\n");
 
@@ -125,9 +128,6 @@ export function layoutOutsideRailLabels(args: {
   const nodeBounds = new Map(
     nodes.map((node) => [node.id, computeProjectedNodeBounds(node, camera, viewport)])
   );
-  const nodeSamples = new Map(
-    nodes.map((node) => [node.id, computeProjectedNodeSamples(node, camera, viewport)])
-  );
 
   const centerX = viewport.width / 2;
   const safeGap = 8;
@@ -139,7 +139,6 @@ export function layoutOutsideRailLabels(args: {
     const anchorSource = targetNode?.transform3D.position ?? label.at;
     const p = projectPoint(anchorSource, camera, viewport);
     const boundsForTarget = targetNode ? nodeBounds.get(targetNode.id) : undefined;
-    const samplesForTarget = targetNode ? nodeSamples.get(targetNode.id) : undefined;
 
     let side: "left" | "right" =
       label.anchorBias === "left" ? "left" : label.anchorBias === "right" ? "right" : p.x <= centerX ? "left" : "right";
@@ -159,21 +158,42 @@ export function layoutOutsideRailLabels(args: {
       side = rightRoom >= width + safeGap ? "right" : "left";
     }
 
-    const desiredY = boundsForTarget ? clamp(p.y, boundsForTarget.minY + 4, boundsForTarget.maxY - 4) : p.y;
-    const targetAnchor = pickNodeAnchor(samplesForTarget ?? [], side, desiredY) ?? {
-      x: side === "left" ? (boundsForTarget?.minX ?? p.x) : (boundsForTarget?.maxX ?? p.x),
-      y: desiredY,
+    const portAnchorWorld = targetNode
+      ? getNodePortWorldPosition(targetNode, label.targetPortId) ??
+        getNodePortWorldPosition(targetNode, inferPortIdForSide(targetNode, side))
+      : undefined;
+    const portAnchor = portAnchorWorld ? projectPoint(portAnchorWorld, camera, viewport) : undefined;
+    const desiredY = boundsForTarget
+      ? clamp(portAnchor?.y ?? p.y, boundsForTarget.minY + 4, boundsForTarget.maxY - 4)
+      : (portAnchor?.y ?? p.y);
+    const targetAnchor = {
+      x: portAnchor?.x ?? (side === "left" ? (boundsForTarget?.minX ?? p.x) : (boundsForTarget?.maxX ?? p.x)),
+      y: portAnchor ? clamp(portAnchor.y, desiredY - 24, desiredY + 24) : desiredY,
     };
+
+    const breakMargin = 12;
+    const breakX =
+      side === "left"
+        ? Math.min(targetAnchor.x - 4, (boundsForTarget?.minX ?? targetAnchor.x) - breakMargin)
+        : Math.max(targetAnchor.x + 4, (boundsForTarget?.maxX ?? targetAnchor.x) + breakMargin);
+    const breakY = desiredY;
+    const railX =
+      side === "left"
+        ? Math.min(bounds.minX - 8, bounds.minX - railPadding * 0.56)
+        : Math.max(bounds.maxX + 8, bounds.maxX + railPadding * 0.56);
 
     return {
       id: label.id,
       targetX: targetAnchor.x,
       targetY: targetAnchor.y,
+      breakX,
+      breakY,
       side,
       lines,
       width,
       height,
       top: 0,
+      railX,
       x:
         side === "left"
           ? Math.max(14, Math.min(bounds.minX - width - safeGap, bounds.minX - railPadding - width))
@@ -207,7 +227,12 @@ export function layoutOutsideRailLabels(args: {
         x: Math.max(placement.x, bounds.maxX + 4),
       };
     })
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .sort((a, b) => {
+      if (a.side !== b.side) {
+        return a.side === "left" ? -1 : 1;
+      }
+      return a.top - b.top;
+    });
 }
 
 function placeOneSide(
@@ -281,29 +306,21 @@ function computeProjectedNodeSamples(
   });
 }
 
-function pickNodeAnchor(
-  points: Array<{ x: number; y: number }>,
-  side: "left" | "right",
-  desiredY: number
-): { x: number; y: number } | undefined {
-  if (points.length === 0) {
-    return undefined;
-  }
+function routeLeaderPoints(placement: Placement, entryX: number, entryY: number): string {
+  const sideSign = placement.side === "left" ? -1 : 1;
+  const railJoinX = placement.railX + sideSign * 2;
+  const breakoutX = placement.breakX + sideSign * 4;
+  const breakoutY = placement.breakY;
 
-  let best = points[0];
-  let bestScore = Number.POSITIVE_INFINITY;
+  const points: Array<{ x: number; y: number }> = [
+    { x: placement.targetX, y: placement.targetY },
+    { x: breakoutX, y: breakoutY },
+    { x: railJoinX, y: breakoutY },
+    { x: placement.railX, y: entryY },
+    { x: entryX, y: entryY },
+  ];
 
-  points.forEach((point) => {
-    const sideScore = side === "left" ? point.x : -point.x;
-    const yScore = Math.abs(point.y - desiredY) * 0.42;
-    const score = sideScore + yScore;
-    if (score < bestScore) {
-      best = point;
-      bestScore = score;
-    }
-  });
-
-  return best;
+  return points.map((point) => `${round(point.x)},${round(point.y)}`).join(" ");
 }
 
 function renderEquations(annotations: AnnotationLayer, camera: CameraSpec, viewport: { width: number; height: number }, ink: string) {
@@ -367,6 +384,21 @@ function wrapText(text: string, maxChars: number): string[] {
   return lines;
 }
 
+function inferPortIdForSide(node: Node, side: "left" | "right"): string | undefined {
+  if (!node.ports || node.ports.length === 0) {
+    return undefined;
+  }
+  const preferred = side === "left" ? ["left", "in", "west", "back"] : ["right", "out", "east", "front"];
+  for (const key of preferred) {
+    const match = node.ports.find((port) => port.id.toLowerCase() === key);
+    if (match) {
+      return match.id;
+    }
+  }
+  const fallback = side === "left" ? node.ports[0] : node.ports[node.ports.length - 1];
+  return fallback?.id;
+}
+
 function escapeXml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -378,4 +410,8 @@ function escapeXml(value: string): string {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function round(value: number): number {
+  return Math.round(value * 10) / 10;
 }
